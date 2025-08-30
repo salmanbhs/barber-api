@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     let phone;
     try {
       const body = await request.json();
-      phone = body.phone;
+      phone = '973' + body.phone;
     } catch {
       return corsResponse(
         { error: 'Invalid JSON body. Please send a POST request with {"phone": "+1234567890"}' },

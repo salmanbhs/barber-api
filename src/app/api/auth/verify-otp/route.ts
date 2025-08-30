@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     let phone, token;
     try {
       const body = await request.json();
-      phone = body.phone;
+      phone = '973' + body.phone;
       token = body.token;
     } catch {
       return corsResponse(
