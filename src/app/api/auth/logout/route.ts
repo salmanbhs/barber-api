@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { corsResponse, corsOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return corsOptions();
+}
 
 export async function GET() {
-  return NextResponse.json({
+  return corsResponse({
     message: 'Logout endpoint - use POST method',
     method: 'POST',
     endpoint: '/api/auth/logout',
@@ -17,21 +22,21 @@ export async function POST() {
 
     if (error) {
       console.error('Supabase signout error:', error);
-      return NextResponse.json(
+      return corsResponse(
         { error: error.message },
-        { status: 400 }
+        400
       );
     }
 
-    return NextResponse.json({
+    return corsResponse({
       message: 'Logged out successfully'
     });
 
   } catch (error) {
     console.error('Logout error:', error);
-    return NextResponse.json(
+    return corsResponse(
       { error: 'Internal server error' },
-      { status: 500 }
+      500
     );
   }
 }

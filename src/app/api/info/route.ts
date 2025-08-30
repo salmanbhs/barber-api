@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { corsResponse, corsOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return corsOptions();
+}
 
 export async function GET() {
   const info = {
@@ -18,5 +23,5 @@ export async function GET() {
     }
   };
 
-  return NextResponse.json(info, { status: 200 });
+  return corsResponse(info);
 }

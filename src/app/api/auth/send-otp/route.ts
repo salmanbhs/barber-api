@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { corsResponse, corsOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return corsOptions();
+}
 
 export async function GET() {
-  return NextResponse.json({
+  return corsResponse({
     message: 'Send OTP endpoint - use POST method',
     method: 'POST',
     endpoint: '/api/auth/send-otp',
@@ -20,16 +25,16 @@ export async function POST(request: NextRequest) {
       const body = await request.json();
       phone = body.phone;
     } catch {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid JSON body. Please send a POST request with {"phone": "+1234567890"}' },
-        { status: 400 }
+        400
       );
     }
 
     if (!phone) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Phone number is required' },
-        { status: 400 }
+        400
       );
     }
 
@@ -43,22 +48,22 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Supabase auth error:', error);
-      return NextResponse.json(
+      return corsResponse(
         { error: error.message },
-        { status: 400 }
+        400
       );
     }
 
-    return NextResponse.json({
+    return corsResponse({
       message: 'OTP sent successfully',
       data: data
     });
 
   } catch (error) {
     console.error('Send OTP error:', error);
-    return NextResponse.json(
+    return corsResponse(
       { error: 'Internal server error' },
-      { status: 500 }
+      500
     );
   }
 }

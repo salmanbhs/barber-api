@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { corsResponse, corsOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return corsOptions();
+}
 
 export async function GET() {
-  return NextResponse.json({
+  return corsResponse({
     message: 'Verify OTP endpoint - use POST method',
     method: 'POST',
     endpoint: '/api/auth/verify-otp',
@@ -22,16 +27,16 @@ export async function POST(request: NextRequest) {
       phone = body.phone;
       token = body.token;
     } catch {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Invalid JSON body. Please send a POST request with {"phone": "+1234567890", "token": "123456"}' },
-        { status: 400 }
+        400
       );
     }
 
     if (!phone || !token) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Phone number and OTP token are required' },
-        { status: 400 }
+        400
       );
     }
 
@@ -44,13 +49,13 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Supabase verify OTP error:', error);
-      return NextResponse.json(
+      return corsResponse(
         { error: error.message },
-        { status: 400 }
+        400
       );
     }
 
-    return NextResponse.json({
+    return corsResponse({
       message: 'OTP verified successfully',
       user: data.user,
       session: data.session
@@ -58,9 +63,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Verify OTP error:', error);
-    return NextResponse.json(
+    return corsResponse(
       { error: 'Internal server error' },
-      { status: 500 }
+      500
     );
   }
 }
