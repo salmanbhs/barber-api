@@ -1,95 +1,56 @@
-import Image from "next/image";
-import styles from "./page.module.css";
-
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const apiInfo = {
+    name: 'Barber API',
+    version: '0.1.0',
+    description: 'A barbershop management API with SMS OTP authentication',
+    documentation: {
+      info: '/api/info',
+      endpoints: {
+        authentication: {
+          register: 'POST /api/auth/register',
+          login: 'POST /api/auth/login',
+          verifyOtp: 'POST /api/auth/verify-otp',
+          logout: 'POST /api/auth/logout'
+        }
+      }
+    },
+    status: 'running'
+  };
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  return (
+    <div style={{ fontFamily: 'monospace', padding: '20px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <h1>🔥 Barber API</h1>
+      <p>A barbershop management API with SMS OTP authentication</p>
+      
+      <h2>📚 API Documentation</h2>
+      <ul>
+        <li><strong>Info:</strong> <code>GET /api/info</code></li>
+      </ul>
+      
+      <h2>🔐 Authentication Endpoints</h2>
+      <ul>
+        <li><strong>Register:</strong> <code>POST /api/auth/register</code></li>
+        <li><strong>Login:</strong> <code>POST /api/auth/login</code></li>
+        <li><strong>Verify OTP:</strong> <code>POST /api/auth/verify-otp</code></li>
+        <li><strong>Logout:</strong> <code>POST /api/auth/logout</code></li>
+      </ul>
+      
+      <h2>🚀 Quick Start</h2>
+      <pre style={{ backgroundColor: '#000', color: '#0f0', padding: '10px', borderRadius: '4px' }}>
+{`# Send OTP for registration
+curl -X POST http://localhost:3000/api/auth/register \\
+  -H "Content-Type: application/json" \\
+  -d '{"phone": "+1234567890"}'
+
+# Verify OTP
+curl -X POST http://localhost:3000/api/auth/verify-otp \\
+  -H "Content-Type: application/json" \\
+  -d '{"phone": "+1234567890", "token": "123456"}'`}
+      </pre>
+      
+      <p style={{ marginTop: '20px', color: '#666' }}>
+        Version: {apiInfo.version} | Status: {apiInfo.status}
+      </p>
     </div>
   );
 }
