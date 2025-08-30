@@ -1,4 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { corsResponse, corsOptions } from '@/lib/cors';
 
 export async function OPTIONS() {

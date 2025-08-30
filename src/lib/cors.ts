@@ -11,7 +11,7 @@ export function corsHeaders() {
 }
 
 // Create a response with CORS headers
-export function corsResponse(data: any, status: number = 200) {
+export function corsResponse(data: object | string | number | boolean | null, status: number = 200) {
   return NextResponse.json(data, {
     status,
     headers: corsHeaders(),
