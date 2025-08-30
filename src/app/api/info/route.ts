@@ -11,8 +11,7 @@ export async function GET(request: NextRequest) {
     endpoints: {
       info: '/api/info',
       auth: {
-        register: '/api/auth/register',
-        login: '/api/auth/login',
+        sendOtp: '/api/auth/send-otp',
         verifyOtp: '/api/auth/verify-otp',
         logout: '/api/auth/logout'
       }

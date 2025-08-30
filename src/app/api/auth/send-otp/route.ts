@@ -3,13 +3,13 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   return NextResponse.json({
-    message: 'Login endpoint - use POST method',
+    message: 'Send OTP endpoint - use POST method',
     method: 'POST',
-    endpoint: '/api/auth/login',
+    endpoint: '/api/auth/send-otp',
     body: {
       phone: '+1234567890'
     },
-    description: 'Send OTP to phone number for login'
+    description: 'Send OTP to phone number for login or registration (automatic)'
   });
 }
 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send OTP to phone number for login
+    // Send OTP to phone number (handles both login and registration automatically)
     const { data, error } = await supabase.auth.signInWithOtp({
       phone: phone,
       options: {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Send OTP error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -7,8 +7,7 @@ export default function Home() {
       info: '/api/info',
       endpoints: {
         authentication: {
-          register: 'POST /api/auth/register',
-          login: 'POST /api/auth/login',
+          sendOtp: 'POST /api/auth/send-otp',
           verifyOtp: 'POST /api/auth/verify-otp',
           logout: 'POST /api/auth/logout'
         }
@@ -29,21 +28,20 @@ export default function Home() {
       
       <h2>🔐 Authentication Endpoints</h2>
       <ul>
-        <li><strong>Register:</strong> <code>POST /api/auth/register</code></li>
-        <li><strong>Login:</strong> <code>POST /api/auth/login</code></li>
+        <li><strong>Send OTP:</strong> <code>POST /api/auth/send-otp</code> (handles both login & registration)</li>
         <li><strong>Verify OTP:</strong> <code>POST /api/auth/verify-otp</code></li>
         <li><strong>Logout:</strong> <code>POST /api/auth/logout</code></li>
       </ul>
       
       <h2>🚀 Quick Start</h2>
       <pre style={{ backgroundColor: '#000', color: '#0f0', padding: '10px', borderRadius: '4px' }}>
-{`# Send OTP for registration
-curl -X POST http://localhost:3000/api/auth/register \\
+{`# Send OTP (works for both new and existing users)
+curl -X POST http://localhost:3001/api/auth/send-otp \\
   -H "Content-Type: application/json" \\
   -d '{"phone": "+1234567890"}'
 
 # Verify OTP
-curl -X POST http://localhost:3000/api/auth/verify-otp \\
+curl -X POST http://localhost:3001/api/auth/verify-otp \\
   -H "Content-Type: application/json" \\
   -d '{"phone": "+1234567890", "token": "123456"}'`}
       </pre>
