@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     try {
       const body = await request.json();
       phone = body.phone;
-    } catch (jsonError) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid JSON body. Please send a POST request with {"phone": "+1234567890"}' },
         { status: 400 }

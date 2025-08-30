@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       const body = await request.json();
       phone = body.phone;
       token = body.token;
-    } catch (jsonError) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid JSON body. Please send a POST request with {"phone": "+1234567890", "token": "123456"}' },
         { status: 400 }
