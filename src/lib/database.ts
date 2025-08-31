@@ -248,7 +248,7 @@ export class DatabaseService {
     return true;
   }
 
-  // Generate available time slots for a barber on a specific date
+  // Generate available time slots for a barber on a specific date (OPTIMIZED)
   static async getAvailableTimeSlots(
     barberId: string, 
     date: string, 
@@ -267,11 +267,32 @@ export class DatabaseService {
       return [];
     }
 
-    // Get existing bookings for this barber on this date
-    const existingBookings = await this.getAllBookings({
-      barber_id: barberId,
-      date: date
-    });
+    // Get ALL existing bookings for this barber on this date in ONE query
+    const { data: existingBookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('appointment_time, duration')
+      .eq('barber_id', barberId)
+      .eq('appointment_date', date)
+      .in('status', ['confirmed', 'completed']);
+
+    if (bookingsError) throw bookingsError;
+
+    // Create a Set of blocked time slots for fast lookup
+    const blockedSlots = new Set<string>();
+    
+    for (const booking of existingBookings || []) {
+      const startTime = booking.appointment_time;
+      const duration = booking.duration;
+      
+      // Block all 15-minute slots covered by this booking
+      let currentTime = startTime;
+      const endTime = this.addMinutesToTime(startTime, duration);
+      
+      while (this.timeToMinutes(currentTime) < this.timeToMinutes(endTime)) {
+        blockedSlots.add(currentTime.substring(0, 5)); // HH:MM format
+        currentTime = this.addMinutesToTime(currentTime, 15);
+      }
+    }
 
     // Generate time slots
     const slots = [];
@@ -281,19 +302,24 @@ export class DatabaseService {
 
     let currentTime = openTime;
     while (this.timeToMinutes(currentTime) < this.timeToMinutes(closeTime) - serviceDuration) {
-      const endTime = this.addMinutesToTime(currentTime, serviceDuration);
+      const timeDisplay = currentTime.substring(0, 5); // HH:MM format
       
-      // Check if this slot is available
-      const isAvailable = await this.checkBarberAvailability(
-        barberId, 
-        date, 
-        currentTime, 
-        serviceDuration
-      );
+      // Check if this slot and enough following slots are available
+      let isAvailable = true;
+      let checkTime = currentTime;
+      const slotsNeeded = Math.ceil(serviceDuration / 15);
+      
+      for (let i = 0; i < slotsNeeded; i++) {
+        if (blockedSlots.has(checkTime.substring(0, 5))) {
+          isAvailable = false;
+          break;
+        }
+        checkTime = this.addMinutesToTime(checkTime, 15);
+      }
 
       slots.push({
         time: `${date}T${currentTime}:00.000Z`,
-        display: currentTime.substring(0, 5), // HH:MM format
+        display: timeDisplay,
         available: isAvailable
       });
 

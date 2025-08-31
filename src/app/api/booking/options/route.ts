@@ -64,12 +64,13 @@ export async function GET(request: NextRequest) {
         })
       );
     } else {
-      // Generate availability for the next 7 days for all barbers
-      const generateAvailableDates = async (barberId: string) => {
+      // For general requests, return minimal availability (just today + tomorrow)
+      const generateLimitedAvailability = async (barberId: string) => {
         const dates = [];
         const today = new Date();
         
-        for (let i = 0; i < 7; i++) {
+        // Only generate 2 days instead of 7 for faster response
+        for (let i = 0; i < 2; i++) {
           const date = new Date(today);
           date.setDate(today.getDate() + i);
           const dateString = date.toISOString().split('T')[0];
@@ -80,18 +81,18 @@ export async function GET(request: NextRequest) {
           dates.push({
             date: dateString,
             dayOfWeek: date.toLocaleDateString('en-US', { weekday: 'long' }),
-            slots: slots
+            slots: slots.slice(0, 10) // Only show first 10 slots for overview
           });
         }
         return dates;
       };
 
-      // Add availability to each barber
+      // Add availability to each barber (parallel processing)
       barbersWithAvailability = await Promise.all(
         barbers.map(async (barber) => ({
           ...barber,
           profileImage: barber.profile_image_url,
-          availability: await generateAvailableDates(barber.id)
+          availability: await generateLimitedAvailability(barber.id)
         }))
       );
     }
