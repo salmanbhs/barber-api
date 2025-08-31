@@ -1,95 +1,35 @@
 import { NextRequest } from 'next/server';
 import { corsResponse, corsOptions } from '@/lib/cors';
+import { DatabaseService } from '@/lib/database';
 
 export async function OPTIONS() {
   return corsOptions();
 }
 
-// Mock bookings database
-let bookings = [
-  {
-    id: '1',
-    customerId: 'customer1',
-    customerName: 'Alice Johnson',
-    customerPhone: '+1234567890',
-    barberId: '1',
-    barberName: 'John Smith',
-    serviceId: '1',
-    serviceName: 'Classic Haircut',
-    date: '2025-09-01',
-    time: '10:00',
-    duration: 30,
-    price: 25.00,
-    status: 'confirmed', // pending, confirmed, completed, cancelled
-    notes: 'Please trim the sides shorter',
-    createdAt: '2025-08-31T10:00:00Z',
-    updatedAt: '2025-08-31T10:00:00Z'
-  },
-  {
-    id: '2',
-    customerId: 'customer2',
-    customerName: 'Bob Wilson',
-    customerPhone: '+1234567891',
-    barberId: '2',
-    barberName: 'Mike Johnson',
-    serviceId: '2',
-    serviceName: 'Beard Trim',
-    date: '2025-09-01',
-    time: '14:30',
-    duration: 20,
-    price: 15.00,
-    status: 'pending',
-    notes: '',
-    createdAt: '2025-08-31T11:00:00Z',
-    updatedAt: '2025-08-31T11:00:00Z'
-  }
-];
-
-// GET all bookings (with optional filters)
+// GET all bookings
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const barberId = searchParams.get('barberId');
-    const customerId = searchParams.get('customerId');
-    const date = searchParams.get('date');
-    const status = searchParams.get('status');
+    const url = new URL(request.url);
+    const barber_id = url.searchParams.get('barber_id');
+    const date = url.searchParams.get('date');
+    const status = url.searchParams.get('status');
 
-    let filteredBookings = [...bookings];
+    const filters: any = {};
+    if (barber_id) filters.barber_id = barber_id;
+    if (date) filters.date = date;
+    if (status) filters.status = status;
 
-    // Apply filters
-    if (barberId) {
-      filteredBookings = filteredBookings.filter(booking => booking.barberId === barberId);
-    }
-    if (customerId) {
-      filteredBookings = filteredBookings.filter(booking => booking.customerId === customerId);
-    }
-    if (date) {
-      filteredBookings = filteredBookings.filter(booking => booking.date === date);
-    }
-    if (status) {
-      filteredBookings = filteredBookings.filter(booking => booking.status === status);
-    }
-
-    // Sort by date and time
-    filteredBookings.sort((a, b) => {
-      const dateTimeA = new Date(`${a.date}T${a.time}`);
-      const dateTimeB = new Date(`${b.date}T${b.time}`);
-      return dateTimeA.getTime() - dateTimeB.getTime();
-    });
+    const bookings = await DatabaseService.getAllBookings(filters);
 
     return corsResponse({
       message: 'Bookings retrieved successfully',
-      data: filteredBookings,
-      meta: {
-        total: filteredBookings.length,
-        filters: { barberId, customerId, date, status }
-      }
+      data: bookings,
+      count: bookings.length
     });
-
   } catch (error) {
     console.error('Get bookings error:', error);
     return corsResponse(
-      { error: 'Internal server error' },
+      { error: 'Failed to retrieve bookings', details: error instanceof Error ? error.message : 'Unknown error' },
       500
     );
   }
@@ -98,16 +38,12 @@ export async function GET(request: NextRequest) {
 // POST - Create new booking
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.json();
-
-    // Validation
-    const requiredFields = [
-      'customerName', 'customerPhone', 'barberId', 'serviceId', 
-      'date', 'time', 'duration', 'price'
-    ];
-
-    for (const field of requiredFields) {
-      if (!data[field]) {
+    const body = await request.json();
+    
+    // Validate required fields
+    const required = ['customer_name', 'customer_phone', 'barber_id', 'service_id', 'appointment_date', 'appointment_time'];
+    for (const field of required) {
+      if (!body[field]) {
         return corsResponse(
           { error: `Missing required field: ${field}` },
           400
@@ -115,79 +51,84 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate phone format (basic)
-    const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-    if (!phoneRegex.test(data.customerPhone)) {
+    // Get service details to calculate price and duration
+    const service = await DatabaseService.getServiceById(body.service_id);
+    if (!service) {
       return corsResponse(
-        { error: 'Invalid phone number format' },
-        400
+        { error: 'Service not found' },
+        404
       );
     }
 
-    // Validate date format (YYYY-MM-DD)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(data.date)) {
+    // Get barber details to verify they exist
+    const barber = await DatabaseService.getBarberById(body.barber_id);
+    if (!barber) {
       return corsResponse(
-        { error: 'Invalid date format. Use YYYY-MM-DD' },
-        400
+        { error: 'Barber not found' },
+        404
       );
     }
 
-    // Validate time format (HH:MM)
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(data.time)) {
-      return corsResponse(
-        { error: 'Invalid time format. Use HH:MM' },
-        400
-      );
-    }
-
-    // Check if booking slot is available
-    const conflictingBooking = bookings.find(booking => 
-      booking.barberId === data.barberId &&
-      booking.date === data.date &&
-      booking.time === data.time &&
-      booking.status !== 'cancelled'
+    // Check availability
+    const isAvailable = await DatabaseService.checkBarberAvailability(
+      body.barber_id,
+      body.appointment_date,
+      body.appointment_time,
+      service.duration
     );
 
-    if (conflictingBooking) {
+    if (!isAvailable) {
       return corsResponse(
-        { error: 'Time slot is already booked' },
-        409
+        { error: 'Time slot is not available' },
+        409 // Conflict
       );
     }
 
-    // Create new booking
-    const newBooking = {
-      id: (bookings.length + 1).toString(),
-      customerId: data.customerId || `customer_${Date.now()}`,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      barberId: data.barberId,
-      barberName: data.barberName || 'Unknown Barber',
-      serviceId: data.serviceId,
-      serviceName: data.serviceName || 'Unknown Service',
-      date: data.date,
-      time: data.time,
-      duration: parseInt(data.duration),
-      price: parseFloat(data.price),
-      status: 'pending',
-      notes: data.notes || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    // Create booking data
+    const bookingData = {
+      customer_name: body.customer_name,
+      customer_phone: body.customer_phone,
+      customer_email: body.customer_email || null,
+      barber_id: body.barber_id,
+      service_id: body.service_id,
+      appointment_date: body.appointment_date,
+      appointment_time: body.appointment_time,
+      duration: service.duration,
+      total_price: service.price,
+      status: 'confirmed' as const,
+      notes: body.notes || null
     };
 
-    bookings.push(newBooking);
+    const booking = await DatabaseService.createBooking(bookingData);
 
-    return corsResponse({
-      message: 'Booking created successfully',
-      data: newBooking
-    }, 201);
-
+    return corsResponse(
+      {
+        message: 'Booking created successfully',
+        data: booking
+      },
+      201
+    );
   } catch (error) {
     console.error('Create booking error:', error);
+    
+    // Handle specific database errors
+    if (error instanceof Error) {
+      if (error.message.includes('unique_barber_time')) {
+        return corsResponse(
+          { error: 'Time slot is already booked' },
+          409
+        );
+      }
+      if (error.message.includes('foreign key')) {
+        return corsResponse(
+          { error: 'Invalid barber or service ID' },
+          400
+        );
+      }
+    }
+
     return corsResponse(
-      { error: 'Internal server error' },
+      { error: 'Failed to create booking', details: error instanceof Error ? error.message : 'Unknown error' },
       500
     );
   }

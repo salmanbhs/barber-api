@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { corsResponse, corsOptions } from '@/lib/cors';
+import { DatabaseService } from '@/lib/database';
 
 export async function OPTIONS() {
   return corsOptions();
@@ -8,69 +9,12 @@ export async function OPTIONS() {
 // GET all services
 export async function GET() {
   try {
-    // TODO: Replace with actual database query
-    const mockServices = [
-      {
-        id: '1',
-        name: 'Classic Haircut',
-        description: 'Traditional haircut with scissors and clipper',
-        duration: 30,
-        price: 25.00,
-        category: 'haircut',
-        isActive: true,
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-08-30T15:30:00Z'
-      },
-      {
-        id: '2',
-        name: 'Beard Trim',
-        description: 'Professional beard trimming and shaping',
-        duration: 20,
-        price: 15.00,
-        category: 'beard',
-        isActive: true,
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-08-30T15:30:00Z'
-      },
-      {
-        id: '3',
-        name: 'Premium Styling',
-        description: 'Complete hair styling with premium products',
-        duration: 45,
-        price: 40.00,
-        category: 'styling',
-        isActive: true,
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-08-30T15:30:00Z'
-      },
-      {
-        id: '4',
-        name: 'Fade Cut',
-        description: 'Modern fade haircut with precise blending',
-        duration: 35,
-        price: 30.00,
-        category: 'haircut',
-        isActive: true,
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-08-30T15:30:00Z'
-      },
-      {
-        id: '5',
-        name: 'Hot Towel Shave',
-        description: 'Traditional hot towel shave experience',
-        duration: 25,
-        price: 20.00,
-        category: 'shave',
-        isActive: true,
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-08-30T15:30:00Z'
-      }
-    ];
-
+    const services = await DatabaseService.getAllServices();
+    
     return corsResponse({
       message: 'Services retrieved successfully',
-      data: mockServices,
-      total: mockServices.length
+      data: services,
+      total: services.length
     });
 
   } catch (error) {
