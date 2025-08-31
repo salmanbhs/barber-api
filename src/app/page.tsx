@@ -10,6 +10,13 @@ export default function Home() {
           sendOtp: 'POST /api/auth/send-otp',
           verifyOtp: 'POST /api/auth/verify-otp',
           logout: 'POST /api/auth/logout'
+        },
+        barbers: {
+          list: 'GET /api/barbers',
+          create: 'POST /api/barbers',
+          getById: 'GET /api/barbers/{id}',
+          update: 'PUT /api/barbers/{id}',
+          delete: 'DELETE /api/barbers/{id}'
         }
       }
     },
@@ -33,17 +40,38 @@ export default function Home() {
         <li><strong>Logout:</strong> <code>POST /api/auth/logout</code></li>
       </ul>
       
+      <h2>💈 Barber Management Endpoints</h2>
+      <ul>
+        <li><strong>List Barbers:</strong> <code>GET /api/barbers</code></li>
+        <li><strong>Create Barber:</strong> <code>POST /api/barbers</code></li>
+        <li><strong>Get Barber:</strong> <code>GET /api/barbers/&#123;id&#125;</code></li>
+        <li><strong>Update Barber:</strong> <code>PUT /api/barbers/&#123;id&#125;</code></li>
+        <li><strong>Delete Barber:</strong> <code>DELETE /api/barbers/&#123;id&#125;</code></li>
+      </ul>
+      
       <h2>🚀 Quick Start</h2>
       <pre style={{ backgroundColor: '#000', color: '#0f0', padding: '10px', borderRadius: '4px' }}>
-{`# Send OTP (works for both new and existing users)
+{`# Authentication
 curl -X POST http://localhost:3001/api/auth/send-otp \\
   -H "Content-Type: application/json" \\
   -d '{"phone": "+1234567890"}'
 
-# Verify OTP
 curl -X POST http://localhost:3001/api/auth/verify-otp \\
   -H "Content-Type: application/json" \\
-  -d '{"phone": "+1234567890", "token": "123456"}'`}
+  -d '{"phone": "+1234567890", "token": "123456"}'
+
+# Barber Management
+curl -X GET http://localhost:3001/api/barbers
+
+curl -X POST http://localhost:3001/api/barbers \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "John Doe",
+    "email": "john@barbershop.com",
+    "phone": "+1234567890",
+    "specialties": ["haircut", "beard"],
+    "experience": 5
+  }'`}
       </pre>
       
       <p style={{ marginTop: '20px', color: '#666' }}>

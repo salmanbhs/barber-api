@@ -18,6 +18,13 @@ export async function GET() {
         sendOtp: '/api/auth/send-otp',
         verifyOtp: '/api/auth/verify-otp',
         logout: '/api/auth/logout'
+      },
+      barbers: {
+        list: 'GET /api/barbers',
+        create: 'POST /api/barbers',
+        getById: 'GET /api/barbers/{id}',
+        update: 'PUT /api/barbers/{id}',
+        delete: 'DELETE /api/barbers/{id}'
       }
     }
   };
