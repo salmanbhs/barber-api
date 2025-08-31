@@ -17,6 +17,13 @@ export default function Home() {
           getById: 'GET /api/barbers/{id}',
           update: 'PUT /api/barbers/{id}',
           delete: 'DELETE /api/barbers/{id}'
+        },
+        services: {
+          list: 'GET /api/services',
+          create: 'POST /api/services',
+          getById: 'GET /api/services/{id}',
+          update: 'PUT /api/services/{id}',
+          delete: 'DELETE /api/services/{id}'
         }
       }
     },
@@ -49,6 +56,15 @@ export default function Home() {
         <li><strong>Delete Barber:</strong> <code>DELETE /api/barbers/&#123;id&#125;</code></li>
       </ul>
       
+      <h2>🛠️ Service Management Endpoints</h2>
+      <ul>
+        <li><strong>List Services:</strong> <code>GET /api/services</code></li>
+        <li><strong>Create Service:</strong> <code>POST /api/services</code></li>
+        <li><strong>Get Service:</strong> <code>GET /api/services/&#123;id&#125;</code></li>
+        <li><strong>Update Service:</strong> <code>PUT /api/services/&#123;id&#125;</code></li>
+        <li><strong>Delete Service:</strong> <code>DELETE /api/services/&#123;id&#125;</code></li>
+      </ul>
+      
       <h2>🚀 Quick Start</h2>
       <pre style={{ backgroundColor: '#000', color: '#0f0', padding: '10px', borderRadius: '4px' }}>
 {`# Authentication
@@ -71,6 +87,19 @@ curl -X POST http://localhost:3001/api/barbers \\
     "phone": "+1234567890",
     "specialties": ["haircut", "beard"],
     "experience": 5
+  }'
+
+# Service Management
+curl -X GET http://localhost:3001/api/services
+
+curl -X POST http://localhost:3001/api/services \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "Premium Haircut",
+    "description": "Luxury haircut experience",
+    "duration": 45,
+    "price": 35.00,
+    "category": "haircut"
   }'`}
       </pre>
       

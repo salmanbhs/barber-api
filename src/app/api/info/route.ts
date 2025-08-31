@@ -25,6 +25,13 @@ export async function GET() {
         getById: 'GET /api/barbers/{id}',
         update: 'PUT /api/barbers/{id}',
         delete: 'DELETE /api/barbers/{id}'
+      },
+      services: {
+        list: 'GET /api/services',
+        create: 'POST /api/services',
+        getById: 'GET /api/services/{id}',
+        update: 'PUT /api/services/{id}',
+        delete: 'DELETE /api/services/{id}'
       }
     }
   };
