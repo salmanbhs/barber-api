@@ -20,7 +20,8 @@ A comprehensive barbershop management API built with Next.js, featuring SMS OTP 
 src/
 └── app/
     └── api/
-        ├── auth/           # SMS OTP Authentication
+        ├── auth/           # SMS OTP & Token Authentication
+        ├── customers/      # Customer profile & booking management
         ├── barbers/        # Barber CRUD operations
         ├── services/       # Service CRUD operations
         ├── booking/        # Booking data & options
@@ -54,6 +55,111 @@ Content-Type: application/json
 ```http
 POST /api/auth/logout
 Authorization: Bearer <access_token>
+```
+
+### Refresh Token
+```http
+POST /api/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "your_refresh_token_here"
+}
+```
+
+## 👤 Customer Management
+
+### Get Customer Profile
+Get the authenticated customer's profile information.
+
+```http
+GET /api/customers/profile
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Customer profile retrieved successfully",
+  "data": {
+    "id": "customer-uuid",
+    "name": "John Doe",
+    "phone": "+1234567890",
+    "email": "john@example.com",
+    "created_at": "2025-09-01T10:00:00Z",
+    "total_bookings": 5,
+    "total_spent": 125.00,
+    "last_booking": "2025-08-15T14:00:00Z"
+  }
+}
+```
+
+### Update Customer Profile
+Update the authenticated customer's profile information.
+
+```http
+PUT /api/customers/profile
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "John Smith",
+  "email": "johnsmith@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Profile updated successfully",
+  "data": {
+    "id": "customer-uuid",
+    "name": "John Smith",
+    "phone": "+1234567890",
+    "email": "johnsmith@example.com",
+    "created_at": "2025-09-01T10:00:00Z"
+  }
+}
+```
+
+### Get Customer Bookings
+Get all bookings for the authenticated customer.
+
+```http
+GET /api/customers/bookings
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Customer bookings retrieved successfully",
+  "data": [
+    {
+      "id": "booking-uuid",
+      "appointment_date": "2025-09-15",
+      "appointment_time": "14:00:00",
+      "status": "confirmed",
+      "total_price": 45.00,
+      "barber": {
+        "id": "barber-uuid",
+        "name": "John Smith"
+      },
+      "services": [
+        {
+          "id": "service-uuid",
+          "name": "Classic Haircut",
+          "price": 25.00
+        },
+        {
+          "id": "service-uuid-2",
+          "name": "Beard Trim",
+          "price": 20.00
+        }
+      ]
+    }
+  ]
+}
 ```
 
 ## 👨‍💼 Barber Management
@@ -277,19 +383,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ## 📚 API Features
 
 - ✅ SMS OTP Authentication with Supabase
+- ✅ Refresh token support for mobile apps
+- ✅ Customer profile management (authenticated)
+- ✅ Customer booking history
 - ✅ Complete Barber CRUD operations
 - ✅ Complete Service CRUD operations  
-- ✅ Complete Booking CRUD operations
+- ✅ Complete Booking CRUD operations with multi-service support
 - ✅ Booking options endpoint (barbers + services + available times)
 - ✅ CORS support for frontend integration
 - ✅ Data validation and error handling
 - ✅ Conflict detection for booking overlaps
 - ✅ Business logic (operating hours, advance booking rules)
+- ✅ Database integration with Supabase PostgreSQL
 
 ## 🔄 Coming Soon
 
-- 🔄 Database integration (currently using mock data)
-- 🔄 Customer management system
 - 🔄 Payment processing integration
 - 🔄 Email/SMS notifications
 - 🔄 Analytics and reporting
