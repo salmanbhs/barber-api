@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const phone = url.searchParams.get('phone');
-    const email = url.searchParams.get('email');
 
     // If phone is provided, search by phone
     if (phone) {

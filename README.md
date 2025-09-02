@@ -1,6 +1,6 @@
 # 💈 Barber API
 
-A comprehensive barbershop management API built with Next.js, featuring SMS OTP authentication, barber management, service management, and booking system.
+A lightweight barbershop management API built with Next.js, featuring SMS OTP authentication, barber management, and customer profile management.
 
 ## 🚀 Live Demo
 
@@ -21,11 +21,11 @@ src/
 └── app/
     └── api/
         ├── auth/           # SMS OTP & Token Authentication
-        ├── customers/      # Customer profile & booking management
+        ├── customers/      # Customer profile management
         ├── barbers/        # Barber CRUD operations
-        ├── services/       # Service CRUD operations
-        ├── booking/        # Booking data & options
-        └── bookings/       # Booking CRUD operations
+        ├── get-available-time/  # Time availability
+        ├── info/           # API information
+        └── slots/          # Available time slots
 ```
 
 ## 🔐 Authentication Endpoints
@@ -51,6 +51,16 @@ Content-Type: application/json
 }
 ```
 
+### Mobile Login
+```http
+POST /api/auth/mobile-login
+Content-Type: application/json
+
+{
+  "phone": "+1234567890"
+}
+```
+
 ### Logout
 ```http
 POST /api/auth/logout
@@ -69,6 +79,14 @@ Content-Type: application/json
 
 ## 👤 Customer Management
 
+### Get All Customers
+```http
+GET /api/customers
+```
+
+**Optional Query Parameters:**
+- `phone` - Search by phone number
+
 ### Get Customer Profile
 Get the authenticated customer's profile information.
 
@@ -86,10 +104,7 @@ Authorization: Bearer <access_token>
     "name": "John Doe",
     "phone": "+1234567890",
     "email": "john@example.com",
-    "created_at": "2025-09-01T10:00:00Z",
-    "total_bookings": 5,
-    "total_spent": 125.00,
-    "last_booking": "2025-08-15T14:00:00Z"
+    "created_at": "2025-09-01T10:00:00Z"
   }
 }
 ```
@@ -122,46 +137,6 @@ Content-Type: application/json
 }
 ```
 
-### Get Customer Bookings
-Get all bookings for the authenticated customer.
-
-```http
-GET /api/customers/bookings
-Authorization: Bearer <access_token>
-```
-
-**Response:**
-```json
-{
-  "message": "Customer bookings retrieved successfully",
-  "data": [
-    {
-      "id": "booking-uuid",
-      "appointment_date": "2025-09-15",
-      "appointment_time": "14:00:00",
-      "status": "confirmed",
-      "total_price": 45.00,
-      "barber": {
-        "id": "barber-uuid",
-        "name": "John Smith"
-      },
-      "services": [
-        {
-          "id": "service-uuid",
-          "name": "Classic Haircut",
-          "price": 25.00
-        },
-        {
-          "id": "service-uuid-2",
-          "name": "Beard Trim",
-          "price": 20.00
-        }
-      ]
-    }
-  ]
-}
-```
-
 ## 👨‍💼 Barber Management
 
 ### Get All Barbers
@@ -172,21 +147,6 @@ GET /api/barbers
 ### Get Barber by ID
 ```http
 GET /api/barbers/{id}
-```
-
-### Create Barber
-```http
-POST /api/barbers
-Content-Type: application/json
-
-{
-  "name": "John Smith",
-  "email": "john@barbershop.com",
-  "phone": "+1234567890",
-  "specialties": ["haircut", "beard", "styling"],
-  "experience": 5,
-  "rating": 4.8
-}
 ```
 
 ### Update Barber
@@ -205,110 +165,23 @@ Content-Type: application/json
 DELETE /api/barbers/{id}
 ```
 
-## ✂️ Service Management
+## ⏰ Time & Availability
 
-### Get All Services
+### Get Available Time Slots
 ```http
-GET /api/services
+GET /api/get-available-time
 ```
 
-### Get Service by ID
+### Get Available Slots
 ```http
-GET /api/services/{id}
+GET /api/slots/available
 ```
 
-### Create Service
+## 📊 API Information
+
+### Get API Info
 ```http
-POST /api/services
-Content-Type: application/json
-
-{
-  "name": "Premium Haircut",
-  "description": "Full service haircut with styling",
-  "duration": 45,
-  "price": 35.00,
-  "category": "haircut"
-}
-```
-
-### Update Service
-```http
-PUT /api/services/{id}
-Content-Type: application/json
-
-{
-  "price": 40.00,
-  "duration": 50
-}
-```
-
-### Delete Service
-```http
-DELETE /api/services/{id}
-```
-
-## 📅 Booking System
-
-### Get Booking Options
-Get all data needed to create a booking (barbers, services, available times)
-```http
-GET /api/booking/options
-```
-
-**Response includes:**
-- Available barbers with their schedules
-- All services with pricing
-- Business hours
-- Available time slots for next 7 days
-- Booking rules (advance notice, etc.)
-
-### Get All Bookings
-```http
-GET /api/bookings
-
-# Optional filters:
-GET /api/bookings?barberId=1&date=2025-09-01&status=confirmed
-```
-
-### Get Booking by ID
-```http
-GET /api/bookings/{id}
-```
-
-### Create Booking
-```http
-POST /api/bookings
-Content-Type: application/json
-
-{
-  "customerName": "Alice Johnson",
-  "customerPhone": "+1234567890",
-  "barberId": "1",
-  "barberName": "John Smith",
-  "serviceId": "1",
-  "serviceName": "Classic Haircut",
-  "date": "2025-09-01",
-  "time": "10:00",
-  "duration": 30,
-  "price": 25.00,
-  "notes": "Please trim the sides shorter"
-}
-```
-
-### Update Booking
-```http
-PUT /api/bookings/{id}
-Content-Type: application/json
-
-{
-  "status": "confirmed",
-  "notes": "Updated customer request"
-}
-```
-
-### Cancel Booking
-```http
-DELETE /api/bookings/{id}
+GET /api/info
 ```
 
 ## 📊 Response Format
@@ -385,19 +258,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 - ✅ SMS OTP Authentication with Supabase
 - ✅ Refresh token support for mobile apps
 - ✅ Customer profile management (authenticated)
-- ✅ Customer booking history
-- ✅ Complete Barber CRUD operations
-- ✅ Complete Service CRUD operations  
-- ✅ Complete Booking CRUD operations with multi-service support
-- ✅ Booking options endpoint (barbers + services + available times)
+- ✅ Customer search by phone number
+- ✅ Barber management operations
+- ✅ Time slot availability checking
 - ✅ CORS support for frontend integration
 - ✅ Data validation and error handling
-- ✅ Conflict detection for booking overlaps
-- ✅ Business logic (operating hours, advance booking rules)
 - ✅ Database integration with Supabase PostgreSQL
 
 ## 🔄 Coming Soon
 
+- 🔄 Service management
+- 🔄 Booking system
 - 🔄 Payment processing integration
 - 🔄 Email/SMS notifications
 - 🔄 Analytics and reporting

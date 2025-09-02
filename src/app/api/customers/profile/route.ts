@@ -122,7 +122,7 @@ export async function PUT(request: NextRequest) {
 
     // Update customer data
     const allowedUpdates = ['name', 'email', 'date_of_birth', 'address', 'notes'];
-    const updates: any = {};
+    const updates: Record<string, string> = {};
     
     for (const field of allowedUpdates) {
       if (body[field] !== undefined) {
