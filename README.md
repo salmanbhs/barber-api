@@ -1,6 +1,6 @@
-# 💈 Barber API
+# 💈 Customer Management API
 
-A lightweight barbershop management API built with Next.js, featuring SMS OTP authentication, barber management, and customer profile management.
+A simple customer management API built with Next.js, featuring SMS OTP authentication and customer profile management.
 
 ## 🚀 Live Demo
 
@@ -9,6 +9,7 @@ A lightweight barbershop management API built with Next.js, featuring SMS OTP au
 ## 🛠️ Tech Stack
 
 - **Framework:** Next.js 15.5.2 with App Router
+- **Database:** Supabase PostgreSQL 
 - **Authentication:** Supabase SMS OTP
 - **Deployment:** Vercel
 - **Language:** TypeScript
@@ -22,10 +23,29 @@ src/
     └── api/
         ├── auth/           # SMS OTP & Token Authentication
         ├── customers/      # Customer profile management
-        ├── barbers/        # Barber CRUD operations
-        ├── get-available-time/  # Time availability
-        ├── info/           # API information
-        └── slots/          # Available time slots
+        └── info/           # API information
+```
+
+## 🗄️ Database Schema
+
+The API uses a single `customers` table:
+
+```sql
+CREATE TABLE customers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name varchar(100) NOT NULL,
+  phone varchar(20) UNIQUE NOT NULL,
+  email varchar(255) UNIQUE,
+  date_of_birth date,
+  address text,
+  notes text,
+  is_active boolean DEFAULT true,
+  total_visits integer DEFAULT 0,
+  total_spent numeric DEFAULT 0.00,
+  last_visit_date date,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now()
+);
 ```
 
 ## 🔐 Authentication Endpoints
@@ -104,6 +124,12 @@ Authorization: Bearer <access_token>
     "name": "John Doe",
     "phone": "+1234567890",
     "email": "john@example.com",
+    "date_of_birth": "1990-01-01",
+    "address": "123 Main St",
+    "notes": "Regular customer",
+    "total_visits": 5,
+    "total_spent": 125.00,
+    "last_visit_date": "2025-08-15",
     "created_at": "2025-09-01T10:00:00Z"
   }
 }
@@ -119,69 +145,56 @@ Content-Type: application/json
 
 {
   "name": "John Smith",
-  "email": "johnsmith@example.com"
+  "email": "johnsmith@example.com",
+  "address": "456 Oak Ave",
+  "date_of_birth": "1990-01-01"
 }
+```
+
+### Create Customer
+```http
+POST /api/customers
+Content-Type: application/json
+
+{
+  "name": "Jane Doe",
+  "phone": "+1234567891",
+  "email": "jane@example.com",
+  "date_of_birth": "1985-05-15",
+  "address": "789 Pine St"
+}
+```
+
+## � API Information
+
+### Get API Info
+```http
+GET /api/info
 ```
 
 **Response:**
 ```json
 {
-  "message": "Profile updated successfully",
-  "data": {
-    "id": "customer-uuid",
-    "name": "John Smith",
-    "phone": "+1234567890",
-    "email": "johnsmith@example.com",
-    "created_at": "2025-09-01T10:00:00Z"
+  "name": "Barber API",
+  "version": "0.1.0",
+  "description": "A simple customer management API",
+  "status": "running",
+  "timestamp": "2025-09-02T12:00:00.000Z",
+  "environment": "development",
+  "endpoints": {
+    "info": "/api/info",
+    "auth": {
+      "sendOtp": "/api/auth/send-otp",
+      "verifyOtp": "/api/auth/verify-otp",
+      "logout": "/api/auth/logout"
+    },
+    "customers": {
+      "list": "GET /api/customers",
+      "create": "POST /api/customers",
+      "profile": "GET /api/customers/profile"
+    }
   }
 }
-```
-
-## 👨‍💼 Barber Management
-
-### Get All Barbers
-```http
-GET /api/barbers
-```
-
-### Get Barber by ID
-```http
-GET /api/barbers/{id}
-```
-
-### Update Barber
-```http
-PUT /api/barbers/{id}
-Content-Type: application/json
-
-{
-  "name": "John Smith Jr.",
-  "specialties": ["haircut", "beard", "styling", "coloring"]
-}
-```
-
-### Delete Barber
-```http
-DELETE /api/barbers/{id}
-```
-
-## ⏰ Time & Availability
-
-### Get Available Time Slots
-```http
-GET /api/get-available-time
-```
-
-### Get Available Slots
-```http
-GET /api/slots/available
-```
-
-## 📊 API Information
-
-### Get API Info
-```http
-GET /api/info
 ```
 
 ## 📊 Response Format
@@ -210,7 +223,7 @@ All endpoints return JSON responses in this format:
 - `400` - Bad Request (validation error)
 - `401` - Unauthorized
 - `404` - Not Found
-- `409` - Conflict (e.g., time slot already booked)
+- `409` - Conflict
 - `500` - Internal Server Error
 
 ## 🌐 CORS Support
@@ -236,12 +249,15 @@ The API includes CORS support for cross-origin requests from `localhost:8081` (f
    # Add your Supabase credentials
    ```
 
-4. **Run development server**
+4. **Set up database**
+   Run the SQL script in `/database/add-customers-table.sql` in your Supabase SQL editor.
+
+5. **Run development server**
    ```bash
    npm run dev
    ```
 
-5. **Open API**
+6. **Open API**
    ```
    http://localhost:3000
    ```
@@ -259,22 +275,19 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 - ✅ Refresh token support for mobile apps
 - ✅ Customer profile management (authenticated)
 - ✅ Customer search by phone number
-- ✅ Barber management operations
-- ✅ Time slot availability checking
+- ✅ Customer creation and updates
 - ✅ CORS support for frontend integration
 - ✅ Data validation and error handling
 - ✅ Database integration with Supabase PostgreSQL
 
-## 🔄 Coming Soon
-
-- 🔄 Service management
-- 🔄 Booking system
-- 🔄 Payment processing integration
-- 🔄 Email/SMS notifications
-- 🔄 Analytics and reporting
-
-## 🚀 Deployment
+##  Deployment
 
 The API is automatically deployed to Vercel on every push to the main branch.
 
 **Production URL:** https://barber-api-wine.vercel.app
+
+---
+
+## 📝 Notes
+
+This is a simplified customer management API. The complex barbershop features (barbers, services, bookings) have been removed to focus on core customer management functionality.
