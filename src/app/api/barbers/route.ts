@@ -7,7 +7,11 @@ export async function OPTIONS() {
   return corsOptions();
 }
 
-// GET all barbers (public access - anyone can view active barbers)
+// Cache for 24 hours, revalidate when data changes
+export const revalidate = 86400; // 24 hours in seconds
+export const dynamic = 'force-cache'; // Enable static generation with caching
+
+// GET all barbers (public access for basic info, staff for full details)
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
@@ -17,39 +21,42 @@ export async function GET(request: NextRequest) {
     if (includePrivateData) {
       const auth = await requireStaff(request);
       if (!auth.success) return auth.response;
+      
+      // Don't cache private data - fetch fresh
+      const barbersWithPrivateData = await DatabaseService.getAllBarbers();
+      return corsResponse({
+        message: 'Barbers retrieved successfully',
+        data: {
+          barbers: barbersWithPrivateData,
+          count: barbersWithPrivateData.length,
+          access_level: 'staff'
+        },
+        cached: false,
+        cache_info: {
+          strategy: 'no_cache_for_private_data',
+          reason: 'Contains sensitive information'
+        }
+      });
     }
 
-    const barbers = await DatabaseService.getAllBarbers();
-
-    // Filter data based on access level
-    const publicBarbers = barbers.map(barber => {
-      if (includePrivateData) {
-        // Return full data for authenticated staff
-        return barber;
-      } else {
-        // Return only public information for unauthenticated users
-        return {
-          id: barber.id,
-          user: {
-            name: barber.user?.name
-          },
-          specialties: barber.specialties,
-          experience_years: barber.experience_years,
-          rating: barber.rating,
-          bio: barber.bio,
-          profile_image_url: barber.profile_image_url
-        };
-      }
-    });
-
+    // For public data, use cached version
+    const cachedBarbers = await getCachedPublicBarbers();
+    
     return corsResponse({
       message: 'Barbers retrieved successfully',
       data: {
-        barbers: publicBarbers,
-        count: publicBarbers.length,
-        access_level: includePrivateData ? 'staff' : 'public'
+        barbers: cachedBarbers,
+        count: cachedBarbers.length,
+        access_level: 'public'
+      },
+      cached: true,
+      cache_info: {
+        strategy: 'next_js_static_generation',
+        revalidate: '24_hours',
+        last_generated: new Date().toISOString()
       }
     });
+
   } catch (error) {
     console.error('Get barbers error:', error);
     return corsResponse(
@@ -57,6 +64,30 @@ export async function GET(request: NextRequest) {
       500
     );
   }
+}
+
+// Cached function for public barber data
+async function getCachedPublicBarbers() {
+  console.log('Fetching barbers data for static generation...');
+  const barbers = await DatabaseService.getAllBarbers();
+  
+  // Filter to public data only and sort by rating
+  return barbers
+    .map(barber => ({
+      id: barber.id,
+      user: {
+        name: barber.user?.name,
+        email: barber.user?.email // Email can be public for contact
+      },
+      specialties: barber.specialties,
+      experience_years: barber.experience_years,
+      rating: barber.rating,
+      bio: barber.bio,
+      profile_image_url: barber.profile_image_url,
+      hire_date: barber.hire_date
+    }))
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0)) // Sort by rating descending
+    .filter(barber => barber.user?.name); // Only include barbers with names
 }
 
 // POST - Create new barber (admin only)

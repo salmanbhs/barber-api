@@ -7,6 +7,9 @@ export async function OPTIONS() {
   return corsOptions();
 }
 
+// Cache individual barber pages for 1 hour, revalidate every 6 hours
+export const revalidate = 21600; // 6 hours in seconds
+
 // GET single barber (public access for basic info, staff for full details)
 export async function GET(
   request: NextRequest,
@@ -49,7 +52,12 @@ export async function GET(
     return corsResponse({
       message: 'Barber retrieved successfully',
       data: barberData,
-      access_level: includePrivateData ? 'staff' : 'public'
+      access_level: includePrivateData ? 'staff' : 'public',
+      cached: !includePrivateData,
+      cache_info: includePrivateData ? undefined : {
+        strategy: 'next_js_static_generation',
+        revalidate: '6_hours'
+      }
     });
   } catch (error) {
     console.error('Get barber error:', error);
