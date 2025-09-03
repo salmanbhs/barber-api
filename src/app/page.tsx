@@ -49,11 +49,13 @@ export default function Home() {
       
       <h2>💈 Barber Management Endpoints</h2>
       <ul>
-        <li><strong>List Barbers:</strong> <code>GET /api/barbers</code></li>
-        <li><strong>Create Barber:</strong> <code>POST /api/barbers</code></li>
-        <li><strong>Get Barber:</strong> <code>GET /api/barbers/&#123;id&#125;</code></li>
-        <li><strong>Update Barber:</strong> <code>PUT /api/barbers/&#123;id&#125;</code></li>
-        <li><strong>Delete Barber:</strong> <code>DELETE /api/barbers/&#123;id&#125;</code></li>
+        <li><strong>List Barbers (Public):</strong> <code>GET /api/barbers</code></li>
+        <li><strong>List Barbers (Staff Data):</strong> <code>GET /api/barbers?private=true</code></li>
+        <li><strong>View Barber (Public):</strong> <code>GET /api/barbers/&#123;id&#125;</code></li>
+        <li><strong>View Barber (Staff Data):</strong> <code>GET /api/barbers/&#123;id&#125;?private=true</code></li>
+        <li><strong>Create Barber:</strong> <code>POST /api/barbers</code> (Admin only)</li>
+        <li><strong>Barber Profile:</strong> <code>GET /api/barbers/profile</code> (Barber only)</li>
+        <li><strong>Update Barber:</strong> <code>PUT /api/barbers/&#123;id&#125;</code> (Admin or own profile)</li>
       </ul>
       
       <h2>🛠️ Service Management Endpoints</h2>
@@ -76,17 +78,20 @@ curl -X POST http://localhost:3001/api/auth/verify-otp \\
   -H "Content-Type: application/json" \\
   -d '{"phone": "+1234567890", "token": "123456"}'
 
-# Barber Management
+# Barber Management (Public Access)
 curl -X GET http://localhost:3001/api/barbers
+
+# Barber Management (Staff Access - requires authentication)
+curl -X GET http://localhost:3001/api/barbers?private=true \\
+  -H "Authorization: Bearer <access_token>"
 
 curl -X POST http://localhost:3001/api/barbers \\
   -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <admin_token>" \\
   -d '{
-    "name": "John Doe",
-    "email": "john@barbershop.com",
-    "phone": "+1234567890",
+    "user_id": "user-uuid",
     "specialties": ["haircut", "beard"],
-    "experience": 5
+    "experience_years": 5
   }'
 
 # Service Management

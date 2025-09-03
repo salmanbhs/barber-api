@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { corsResponse, corsOptions } from '@/lib/cors';
+import { DatabaseService } from '@/lib/database';
 
 export async function OPTIONS() {
   return corsOptions();
@@ -55,10 +56,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!data.user) {
+      return corsResponse(
+        { error: 'User data not available' },
+        400
+      );
+    }
+
+    // Get or create user in our system
+    let dbUser = await DatabaseService.getUserByAuthId(data.user.id);
+    
+    if (!dbUser) {
+      // Create new user in our system
+      dbUser = await DatabaseService.createOrUpdateUser({
+        auth_user_id: data.user.id,
+        name: data.user.user_metadata?.name || 'User',
+        phone: phone,
+        email: data.user.email,
+        role: 'customer' // Default role
+      });
+    }
+
+    // Create customer profile if needed and user is customer
+    if (dbUser.role === 'customer') {
+      let customer = await DatabaseService.getCustomerByUserId(dbUser.id);
+      
+      if (!customer) {
+        customer = await DatabaseService.createCustomer({
+          name: dbUser.name,
+          phone: dbUser.phone,
+          email: dbUser.email,
+          user_id: dbUser.id
+        });
+      }
+    }
+
+    // Get role permissions
+    const getRolePermissions = (role: string) => {
+      switch (role) {
+        case 'admin':
+          return ['manage_users', 'manage_barbers', 'manage_customers', 'view_reports', 'system_admin'];
+        case 'barber':
+          return ['manage_appointments', 'view_customer_data', 'update_profile'];
+        case 'customer':
+          return ['view_profile', 'book_appointments', 'view_history'];
+        default:
+          return [];
+      }
+    };
+
     return corsResponse({
       message: 'OTP verified successfully',
-      user: data.user,
-      session: data.session
+      user: {
+        ...data.user,
+        role: dbUser.role,
+        db_user_id: dbUser.id
+      },
+      session: data.session,
+      role_info: {
+        role: dbUser.role,
+        permissions: getRolePermissions(dbUser.role)
+      }
     });
 
   } catch (error) {

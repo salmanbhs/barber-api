@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { corsResponse, corsOptions } from '@/lib/cors';
 import { DatabaseService } from '@/lib/database';
-import { supabase } from '@/lib/supabase';
+import { requireAuthenticated } from '@/lib/auth';
 
 export async function OPTIONS() {
   return corsOptions();
@@ -9,57 +9,43 @@ export async function OPTIONS() {
 
 // GET - Get customer profile (requires authentication)
 export async function GET(request: NextRequest) {
+  const auth = await requireAuthenticated(request);
+  if (!auth.success) return auth.response;
+
   try {
-    // Get the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return corsResponse(
-        { error: 'Authorization token required' },
-        401
-      );
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-    // Verify the token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    let customer;
     
-    if (error || !user) {
+    // If user is a customer, get their customer profile
+    if (auth.user.role === 'customer') {
+      customer = await DatabaseService.getCustomerByUserId(auth.user.dbUser.id);
+      
+      // If customer profile doesn't exist, create it
+      if (!customer) {
+        customer = await DatabaseService.createCustomer({
+          name: auth.user.dbUser.name,
+          phone: auth.user.dbUser.phone,
+          email: auth.user.dbUser.email,
+          user_id: auth.user.dbUser.id
+        });
+      }
+    } else {
+      // For admin/barber viewing customer profiles, this endpoint shouldn't be used
       return corsResponse(
-        { error: 'Invalid or expired token' },
-        401
+        { error: 'This endpoint is for customers only. Use /api/admin/users for user management.' },
+        403
       );
-    }
-
-    // Get customer data from our database using phone number
-    const customerPhone = user.phone;
-    if (!customerPhone) {
-      return corsResponse(
-        { error: 'Phone number not found in user data' },
-        400
-      );
-    }
-
-    let customer = await DatabaseService.getCustomerByPhone(customerPhone);
-    
-    // If customer doesn't exist in our database, create them
-    if (!customer) {
-      customer = await DatabaseService.createCustomer({
-        name: user.user_metadata?.name || 'Customer',
-        phone: customerPhone,
-        email: user.email
-      });
     }
 
     return corsResponse({
       message: 'Customer profile retrieved successfully',
       data: {
         customer,
+        user: auth.user.dbUser,
         auth_user: {
-          id: user.id,
-          phone: user.phone,
-          email: user.email,
-          created_at: user.created_at,
+          id: auth.user.user.id,
+          phone: auth.user.user.phone,
+          email: auth.user.user.email,
+          created_at: auth.user.user.created_at,
         },
         stats: {
           total_visits: customer.total_visits,
@@ -80,42 +66,25 @@ export async function GET(request: NextRequest) {
 
 // PUT - Update customer profile (requires authentication)
 export async function PUT(request: NextRequest) {
-  try {
-    // Get the authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return corsResponse(
-        { error: 'Authorization token required' },
-        401
-      );
-    }
+  const auth = await requireAuthenticated(request);
+  if (!auth.success) return auth.response;
 
-    const token = authHeader.substring(7);
+  try {
     const body = await request.json();
 
-    // Verify the token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) {
+    // Only customers can update their own profile
+    if (auth.user.role !== 'customer') {
       return corsResponse(
-        { error: 'Invalid or expired token' },
-        401
+        { error: 'Only customers can update their profile' },
+        403
       );
     }
 
     // Get customer from our database
-    const customerPhone = user.phone;
-    if (!customerPhone) {
-      return corsResponse(
-        { error: 'Phone number not found in user data' },
-        400
-      );
-    }
-
-    const customer = await DatabaseService.getCustomerByPhone(customerPhone);
+    const customer = await DatabaseService.getCustomerByUserId(auth.user.dbUser.id);
     if (!customer) {
       return corsResponse(
-        { error: 'Customer not found' },
+        { error: 'Customer profile not found' },
         404
       );
     }

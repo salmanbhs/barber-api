@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { corsResponse, corsOptions } from '@/lib/cors';
 import { DatabaseService } from '@/lib/database';
+import { requireStaff } from '@/lib/auth';
 
 export async function OPTIONS() {
   return corsOptions();
@@ -8,6 +9,9 @@ export async function OPTIONS() {
 
 // GET all customers
 export async function GET(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!auth.success) return auth.response;
+
   try {
     const url = new URL(request.url);
     const phone = url.searchParams.get('phone');
@@ -43,6 +47,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new customer
 export async function POST(request: NextRequest) {
+  const auth = await requireStaff(request);
+  if (!auth.success) return auth.response;
+
   try {
     const body = await request.json();
     
