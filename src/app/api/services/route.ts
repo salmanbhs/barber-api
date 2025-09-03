@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { corsResponse, corsOptions } from '@/lib/cors';
 import { DatabaseService } from '@/lib/database';
-import { requireStaff, requireAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 
 export async function OPTIONS() {
   return corsOptions();
@@ -10,26 +10,13 @@ export async function OPTIONS() {
 // Cache for 1 hour, services don't change frequently
 export const revalidate = 86400; // 24 hours in seconds
 
-// GET all services (public access)
-export async function GET(request: NextRequest) {
+// GET all active services (public access)
+export async function GET() {
   try {
-    const url = new URL(request.url);
-    const category = url.searchParams.get('category');
-    // const includeInactive = url.searchParams.get('includeInactive') === 'true';
-
-    // // Only staff can see inactive services
-    // if (includeInactive) {
-    //   const auth = await requireStaff(request);
-    //   if (!auth.success) return auth.response;
-    // }
-
-    let services;
-    if (category) {
-      services = await DatabaseService.getServicesByCategory(category);
-    } else {
-      services = await DatabaseService.getAllServices(); // you can pass includeInactive
-    }
-
+    
+    // No query parameters = better caching
+    const services = await DatabaseService.getAllServices(); // Only active services
+    
     // Group services by category for easier consumption
     const servicesByCategory = services.reduce((acc, service) => {
       const cat = service.category || 'other';
@@ -46,7 +33,8 @@ export async function GET(request: NextRequest) {
         services,
         servicesByCategory,
         count: services.length,
-        categories: Object.keys(servicesByCategory)
+        categories: Object.keys(servicesByCategory).sort(),
+        access_level: 'public'
       }
     });
 

@@ -20,11 +20,7 @@ This will create the `services` table with sample data including:
 ## API Endpoints
 
 ### GET /api/services
-**Public access** - Retrieve all active services
-
-**Query Parameters:**
-- `category` (optional) - Filter by service category
-- `includeInactive=true` (staff only) - Include inactive services
+**Public access** - Retrieve all active services (OPTIMIZED FOR CACHING)
 
 **Response:**
 ```json
@@ -38,7 +34,47 @@ This will create the `services` table with sample data including:
       "styling": [...]
     },
     "count": 10,
-    "categories": ["haircut", "beard", "styling", "shave", "treatment", "package"]
+    "categories": ["haircut", "beard", "styling", "shave", "treatment", "package"],
+    "access_level": "public"
+  }
+}
+```
+
+### GET /api/services/category/[category]
+**Public access** - Retrieve services by specific category
+
+**Example:** `/api/services/category/haircut`
+
+**Response:**
+```json
+{
+  "message": "Services in category 'haircut' retrieved successfully", 
+  "data": {
+    "services": [...],
+    "count": 3,
+    "category": "haircut",
+    "access_level": "public"
+  }
+}
+```
+
+### GET /api/services/all
+**Staff only** - Retrieve all services including inactive ones
+
+**Headers:** `Authorization: Bearer <staff_token>`
+
+**Response:**
+```json
+{
+  "message": "All services retrieved successfully (staff access)",
+  "data": {
+    "services": [...],
+    "servicesByCategory": {...},
+    "count": 15,
+    "activeCount": 10,
+    "inactiveCount": 5,
+    "categories": [...],
+    "access_level": "staff"
   }
 }
 ```
@@ -136,7 +172,14 @@ Common HTTP status codes:
 - `404` - Not Found
 - `500` - Internal Server Error
 
-## Caching
-- Services list cached for 1 hour (3600 seconds)
-- Individual services cached for 2 hours (7200 seconds)
+## Caching (OPTIMIZED)
+- **Main services list**: Cached for 1 hour (3600 seconds) - **STATIC CACHING**
+- **Individual services**: Cached for 2 hours (7200 seconds)
+- **Category services**: Cached for 1 hour (3600 seconds)
+- **Staff endpoints**: No caching (force-dynamic for security)
 - Cache automatically revalidated when data changes
+
+**Cache Fix Applied:**
+- Removed query parameters from main endpoint to enable static caching
+- Separated functionality into dedicated endpoints for better cache performance
+- Main `/api/services` should now show `X-Vercel-Cache: HIT` after first request
