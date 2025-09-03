@@ -6,8 +6,8 @@ export async function OPTIONS() {
   return corsOptions();
 }
 
-// Cache category services for 1 hour
-export const revalidate = 3600; // 1 hour in seconds
+// Cache category services for 30 days (auto-revalidate on mutations)
+export const revalidate = 2592000; // 30 days in seconds
 
 // GET services by category
 export async function GET(

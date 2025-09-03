@@ -7,8 +7,8 @@ export async function OPTIONS() {
   return corsOptions();
 }
 
-// Optimized caching configuration for Vercel
-export const revalidate = 86400; // 24 hours
+// MAXIMUM caching with auto-revalidation on data changes
+export const revalidate = 2592000; // 30 days (maximum practical cache time)
 
 // GET all active services - Simple approach for better caching
 export async function GET() {
@@ -85,6 +85,11 @@ export async function POST(request: NextRequest) {
     };
 
     const service = await DatabaseService.createService(serviceData);
+
+    // Automatically revalidate services cache after creating new service
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/api/services');
+    console.log('✅ Cache revalidated after service creation');
 
     return corsResponse(
       {

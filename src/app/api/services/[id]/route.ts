@@ -7,8 +7,8 @@ export async function OPTIONS() {
   return corsOptions();
 }
 
-// Cache individual services for 2 hours
-export const revalidate = 7200; // 2 hours in seconds
+// Cache individual services for maximum time with auto-revalidation
+export const revalidate = 2592000; // 30 days (auto-revalidated on updates)
 
 // GET single service (public access)
 export async function GET(
@@ -103,6 +103,11 @@ export async function PUT(
 
     const updatedService = await DatabaseService.updateService(id, updates);
 
+    // Automatically revalidate services cache after update
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/api/services');
+    console.log('✅ Cache revalidated after service update');
+
     return corsResponse({
       message: 'Service updated successfully',
       data: updatedService
@@ -138,11 +143,23 @@ export async function DELETE(
 
     if (hardDelete) {
       await DatabaseService.hardDeleteService(id);
+      
+      // Revalidate cache after hard delete
+      const { revalidatePath } = await import('next/cache');
+      revalidatePath('/api/services');
+      console.log('✅ Cache revalidated after service hard delete');
+      
       return corsResponse({
         message: 'Service permanently deleted successfully'
       });
     } else {
       await DatabaseService.deleteService(id);
+      
+      // Revalidate cache after soft delete
+      const { revalidatePath } = await import('next/cache');
+      revalidatePath('/api/services');
+      console.log('✅ Cache revalidated after service soft delete');
+      
       return corsResponse({
         message: 'Service deactivated successfully'
       });
