@@ -9,7 +9,7 @@ export async function OPTIONS() {
 
 // Cache for 24 hours, revalidate when data changes
 export const revalidate = 86400; // 24 hours in seconds
-export const dynamic = 'force-cache'; // Enable static generation with caching
+// Note: Using default 'auto' for dynamic to handle query parameters
 
 // GET all barbers (public access for basic info, staff for full details)
 export async function GET(request: NextRequest) {
