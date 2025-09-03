@@ -7,15 +7,15 @@ export async function OPTIONS() {
   return corsOptions();
 }
 
-// Cache for 1 hour, services don't change frequently
-export const revalidate = 86400; // 24 hours in seconds
+// Optimized caching configuration for Vercel
+export const revalidate = 86400; // 24 hours
 
-// GET all active services (public access)
+// GET all active services - Simple approach for better caching
 export async function GET() {
   try {
+    console.log('🔄 Fetching services...');
     
-    // No query parameters = better caching
-    const services = await DatabaseService.getAllServices(); // Only active services
+    const services = await DatabaseService.getAllServices();
     
     // Group services by category for easier consumption
     const servicesByCategory = services.reduce((acc, service) => {
@@ -27,7 +27,7 @@ export async function GET() {
       return acc;
     }, {} as Record<string, typeof services>);
 
-    return corsResponse({
+    const response = corsResponse({
       message: 'Services retrieved successfully',
       data: {
         services,
@@ -37,6 +37,11 @@ export async function GET() {
         access_level: 'public'
       }
     });
+
+    // Add cache headers that Vercel should respect
+    response.headers.set('Cache-Control', 'public, s-maxage=86400, max-age=3600');
+    
+    return response;
 
   } catch (error) {
     console.error('Get services error:', error);
