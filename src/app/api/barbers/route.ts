@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { corsResponse, corsOptions } from '@/lib/cors';
 import { DatabaseService } from '@/lib/database';
 import { requireStaff } from '@/lib/auth';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export async function OPTIONS() {
   return corsOptions();
@@ -19,12 +20,17 @@ export async function GET(request: NextRequest) {
 
     // If requesting private data, require staff authentication
     if (includePrivateData) {
+      // 🚫 EXPLICITLY disable caching for private data
+      noStore();
+      console.log('🔒 Private data request - caching disabled for security');
+      
       const auth = await requireStaff(request);
       if (!auth.success) return auth.response;
       
       // Don't cache private data - fetch fresh
       const barbersWithPrivateData = await DatabaseService.getAllBarbers();
-      return corsResponse({
+      
+      const response = corsResponse({
         message: 'Barbers retrieved successfully',
         data: {
           barbers: barbersWithPrivateData,
@@ -33,10 +39,17 @@ export async function GET(request: NextRequest) {
         },
         cached: false,
         cache_info: {
-          strategy: 'no_cache_for_private_data',
-          reason: 'Contains sensitive information'
+          strategy: 'noStore_directive_enforced',
+          reason: 'Private data - security requirement, caching explicitly disabled'
         }
       });
+      
+      // Add additional cache-busting headers for extra security
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      
+      return response;
     }
 
     // For public data, let Next.js handle caching with revalidate
