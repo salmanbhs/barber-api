@@ -39,21 +39,33 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // For public data, use cached version
-    const cachedBarbers = await getCachedPublicBarbers();
+    // For public data, let Next.js handle caching with revalidate
+    const barbers = await DatabaseService.getAllBarbers();
+    
+    // Filter to public data only and sort by rating
+    const publicBarbers = barbers
+      .map(barber => ({
+        id: barber.id,
+        user: {
+          name: barber.user?.name,
+          email: barber.user?.email // Email can be public for contact
+        },
+        specialties: barber.specialties,
+        experience_years: barber.experience_years,
+        rating: barber.rating,
+        bio: barber.bio,
+        profile_image_url: barber.profile_image_url,
+        hire_date: barber.hire_date
+      }))
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0)) // Sort by rating descending
+      .filter(barber => barber.user?.name); // Only include barbers with names
     
     return corsResponse({
       message: 'Barbers retrieved successfully',
       data: {
-        barbers: cachedBarbers,
-        count: cachedBarbers.length,
+        barbers: publicBarbers,
+        count: publicBarbers.length,
         access_level: 'public'
-      },
-      cached: true,
-      cache_info: {
-        strategy: 'next_js_static_generation',
-        revalidate: '24_hours',
-        last_generated: new Date().toISOString()
       }
     });
 
@@ -64,30 +76,6 @@ export async function GET(request: NextRequest) {
       500
     );
   }
-}
-
-// Cached function for public barber data
-async function getCachedPublicBarbers() {
-  console.log('Fetching barbers data for static generation...');
-  const barbers = await DatabaseService.getAllBarbers();
-  
-  // Filter to public data only and sort by rating
-  return barbers
-    .map(barber => ({
-      id: barber.id,
-      user: {
-        name: barber.user?.name,
-        email: barber.user?.email // Email can be public for contact
-      },
-      specialties: barber.specialties,
-      experience_years: barber.experience_years,
-      rating: barber.rating,
-      bio: barber.bio,
-      profile_image_url: barber.profile_image_url,
-      hire_date: barber.hire_date
-    }))
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0)) // Sort by rating descending
-    .filter(barber => barber.user?.name); // Only include barbers with names
 }
 
 // POST - Create new barber (admin only)

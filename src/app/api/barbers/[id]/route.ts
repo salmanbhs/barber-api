@@ -52,12 +52,7 @@ export async function GET(
     return corsResponse({
       message: 'Barber retrieved successfully',
       data: barberData,
-      access_level: includePrivateData ? 'staff' : 'public',
-      cached: !includePrivateData,
-      cache_info: includePrivateData ? undefined : {
-        strategy: 'next_js_static_generation',
-        revalidate: '6_hours'
-      }
+      access_level: includePrivateData ? 'staff' : 'public'
     });
   } catch (error) {
     console.error('Get barber error:', error);
