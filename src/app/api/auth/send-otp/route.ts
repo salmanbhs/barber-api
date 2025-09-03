@@ -14,7 +14,13 @@ export async function GET() {
     body: {
       phone: '+1234567890'
     },
-    description: 'Send OTP to phone number for login or registration (automatic)'
+    description: 'Send OTP to phone number for unified login/registration',
+    flow: {
+      step1: 'POST /api/auth/send-otp with phone number',
+      step2: 'POST /api/auth/verify-otp with phone, token, and role',
+      note: 'Same flow works for all roles: customer, barber, admin'
+    },
+    roles: 'Specify role in verify-otp step: customer (default), barber, admin'
   });
 }
 

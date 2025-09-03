@@ -71,16 +71,6 @@ Content-Type: application/json
 }
 ```
 
-### Mobile Login
-```http
-POST /api/auth/mobile-login
-Content-Type: application/json
-
-{
-  "phone": "+1234567890"
-}
-```
-
 ### Logout
 ```http
 POST /api/auth/logout
