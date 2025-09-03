@@ -50,6 +50,18 @@ export interface Customer {
   user?: User;
 }
 
+export interface Service {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  duration_minutes: number;
+  category?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Database service class
 export class DatabaseService {
   
@@ -358,5 +370,100 @@ export class DatabaseService {
     } catch {
       return false;
     }
+  }
+
+  // Service operations
+  static async getAllServices(includeInactive = false): Promise<Service[]> {
+    let query = supabase
+      .from('services')
+      .select('*')
+      .order('category', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (!includeInactive) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getServiceById(id: string): Promise<Service | null> {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async getServicesByCategory(category: string): Promise<Service[]> {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('category', category)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+    
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async createService(serviceData: {
+    name: string;
+    description?: string;
+    price: number;
+    duration_minutes: number;
+    category?: string;
+  }): Promise<Service> {
+    const { data, error } = await supabase
+      .from('services')
+      .insert([serviceData])
+      .select('*')
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateService(id: string, updates: {
+    name?: string;
+    description?: string;
+    price?: number;
+    duration_minutes?: number;
+    category?: string;
+    is_active?: boolean;
+  }): Promise<Service> {
+    const { data, error } = await supabase
+      .from('services')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteService(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('services')
+      .update({ is_active: false })
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  static async hardDeleteService(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('services')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 }
