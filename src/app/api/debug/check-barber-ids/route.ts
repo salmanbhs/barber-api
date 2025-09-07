@@ -29,7 +29,7 @@ export async function GET() {
         acc.push(booking);
       }
       return acc;
-    }, [] as any[]) || [];
+    }, [] as { barber_id: string; barber_name: string }[]) || [];
 
     // Check which IDs match
     const comparison = barbers?.map(barber => {

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { DatabaseService } from '@/lib/database';
+import { DatabaseService, BookingStatus } from '@/lib/database';
 import { corsOptions, corsResponse } from '@/lib/cors';
 import { requireAuthenticated } from '@/lib/auth';
 
@@ -27,10 +27,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's bookings with optional filters
-    const filters: any = {
+    const filters: {
+      customer_id: string;
+      status?: BookingStatus;
+      date?: string;
+    } = {
       customer_id: customer.id
     };
-    if (status) filters.status = status;
+    if (status) filters.status = status as BookingStatus;
     if (date) filters.date = date;
 
     const bookings = await DatabaseService.getAllBookings(filters);

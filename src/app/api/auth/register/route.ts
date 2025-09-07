@@ -5,6 +5,6 @@ export async function OPTIONS() {
   return corsOptions();
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   return corsResponse({ error: 'Register endpoint not implemented' }, 501);
 }

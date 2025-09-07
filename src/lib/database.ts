@@ -762,7 +762,7 @@ export class DatabaseService {
   static async hasBookingConflict(bookingDateTime: Date, barberId: string, totalDuration?: number): Promise<boolean> {
     try {
       // Get service duration to calculate time range
-      let serviceDuration = totalDuration || 60; // Use provided duration or default 1 hour
+      const serviceDuration = totalDuration || 60; // Use provided duration or default 1 hour
 
       // Calculate booking end time
       const bookingEndTime = new Date(bookingDateTime.getTime() + (serviceDuration * 60 * 1000));
@@ -868,7 +868,7 @@ export class DatabaseService {
   }
 
   static async setMaintenanceMode(enabled: boolean, message?: string): Promise<CompanyConfig> {
-    const updates: any = { maintenance_mode: enabled };
+    const updates: { maintenance_mode: boolean; maintenance_message?: string } = { maintenance_mode: enabled };
     if (message) {
       updates.maintenance_message = message;
     }
