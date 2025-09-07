@@ -62,6 +62,73 @@ export interface Service {
   updated_at: string;
 }
 
+export interface WorkingShift {
+  start: string; // Format: "HH:MM"
+  end: string;   // Format: "HH:MM"
+}
+
+export interface DaySchedule {
+  isOpen: boolean;
+  shifts: WorkingShift[];
+}
+
+export interface WorkingHours {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
+}
+
+export interface Holiday {
+  date: string; // Format: "YYYY-MM-DD"
+  name: string;
+  isRecurring?: boolean;
+  customHours?: WorkingShift[];
+}
+
+export interface SocialMedia {
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  whatsapp?: string;
+  google_business?: string;
+}
+
+export interface CompanyConfig {
+  id: string;
+  company_name: string;
+  company_description?: string;
+  company_logo_url?: string;
+  company_phone?: string;
+  company_email?: string;
+  company_address?: string;
+  company_website?: string;
+  working_hours: WorkingHours;
+  holidays: Holiday[];
+  primary_color: string;
+  secondary_color: string;
+  accent_color: string;
+  background_color: string;
+  text_color: string;
+  booking_advance_hours: number;
+  default_service_duration: number;
+  time_slot_interval: number;
+  max_daily_bookings: number;
+  currency: string;
+  sms_notifications: boolean;
+  email_notifications: boolean;
+  reminder_hours_before: number;
+  social_media: SocialMedia;
+  is_active: boolean;
+  maintenance_mode: boolean;
+  maintenance_message: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Database service class
 export class DatabaseService {
   
@@ -465,5 +532,121 @@ export class DatabaseService {
       .eq('id', id);
     
     if (error) throw error;
+  }
+
+  // Company Configuration operations
+  static async getCompanyConfig(): Promise<CompanyConfig | null> {
+    const { data, error } = await supabase
+      .from('company_config')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async updateCompanyConfig(updates: Partial<Omit<CompanyConfig, 'id' | 'created_at' | 'updated_at'>>): Promise<CompanyConfig> {
+    // First get the current config
+    const currentConfig = await this.getCompanyConfig();
+    
+    if (!currentConfig) {
+      throw new Error('No company configuration found');
+    }
+
+    const { data, error } = await supabase
+      .from('company_config')
+      .update(updates)
+      .eq('id', currentConfig.id)
+      .select('*')
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async createCompanyConfig(configData: Partial<Omit<CompanyConfig, 'id' | 'created_at' | 'updated_at'>>): Promise<CompanyConfig> {
+    const { data, error } = await supabase
+      .from('company_config')
+      .insert([configData])
+      .select('*')
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async isShopOpen(checkDate?: Date): Promise<boolean> {
+    const { data, error } = await supabase
+      .rpc('is_shop_open', { 
+        check_datetime: checkDate?.toISOString() || new Date().toISOString() 
+      });
+    
+    if (error) throw error;
+    return data || false;
+  }
+
+  static async getWorkingHoursForDate(date: Date): Promise<DaySchedule | null> {
+    const config = await this.getCompanyConfig();
+    if (!config) return null;
+
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WorkingHours;
+    return config.working_hours[dayName] || null;
+  }
+
+  static async canBookAtTime(bookingDateTime: Date): Promise<boolean> {
+    const config = await this.getCompanyConfig();
+    if (!config) return false;
+
+    const now = new Date();
+    const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    // Check if booking is within advance hours limit
+    if (hoursUntilBooking < config.booking_advance_hours) {
+      return false;
+    }
+
+    // Check if shop is open at that time
+    return await this.isShopOpen(bookingDateTime);
+  }
+
+  static async updateWorkingHours(workingHours: WorkingHours): Promise<CompanyConfig> {
+    return this.updateCompanyConfig({ working_hours: workingHours });
+  }
+
+  static async addHoliday(holiday: Holiday): Promise<CompanyConfig> {
+    const config = await this.getCompanyConfig();
+    if (!config) throw new Error('No company configuration found');
+
+    const updatedHolidays = [...config.holidays, holiday];
+    return this.updateCompanyConfig({ holidays: updatedHolidays });
+  }
+
+  static async removeHoliday(holidayDate: string): Promise<CompanyConfig> {
+    const config = await this.getCompanyConfig();
+    if (!config) throw new Error('No company configuration found');
+
+    const updatedHolidays = config.holidays.filter(h => h.date !== holidayDate);
+    return this.updateCompanyConfig({ holidays: updatedHolidays });
+  }
+
+  static async updateTheme(themeColors: {
+    primary_color?: string;
+    secondary_color?: string;
+    accent_color?: string;
+    background_color?: string;
+    text_color?: string;
+  }): Promise<CompanyConfig> {
+    return this.updateCompanyConfig(themeColors);
+  }
+
+  static async setMaintenanceMode(enabled: boolean, message?: string): Promise<CompanyConfig> {
+    const updates: any = { maintenance_mode: enabled };
+    if (message) {
+      updates.maintenance_message = message;
+    }
+    return this.updateCompanyConfig(updates);
   }
 }
