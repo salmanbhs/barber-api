@@ -129,6 +129,60 @@ export interface CompanyConfig {
   updated_at: string;
 }
 
+export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+
+export interface BookingService {
+  id: string;
+  booking_id: string;
+  service_id: string;
+  service_name: string;
+  service_price: number;
+  service_duration: number;
+  service_order: number;
+  created_at: string;
+  // Join fields
+  service?: Service;
+}
+
+export interface Booking {
+  id: string;
+  customer_id?: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  // Removed single service fields, now using services array
+  services_count: number;
+  total_duration: number; // Total duration of all services
+  services_summary: string; // Human-readable summary like "Haircut, Beard Trim"
+  barber_id?: string;
+  barber_name?: string;
+  appointment_date: string;
+  appointment_time: string;
+  appointment_datetime: string;
+  total_amount: number;
+  currency: string;
+  notes?: string;
+  special_requests?: string;
+  status: BookingStatus;
+  booking_source: string;
+  confirmation_code: string;
+  created_at: string;
+  updated_at: string;
+  confirmed_at?: string;
+  cancelled_at?: string;
+  completed_at?: string;
+  // Join fields
+  customer?: Customer;
+  services?: BookingService[]; // Array of services in this booking
+  barber?: User;
+}
+
+export interface TimeSlot {
+  slot_time: string;
+  slot_datetime: string;
+  is_available: boolean;
+}
+
 // Database service class
 export class DatabaseService {
   
@@ -212,6 +266,18 @@ export class DatabaseService {
     
     if (error) throw error;
     return data || [];
+  }
+
+  static async getUserById(id: string): Promise<User | null> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .eq('is_active', true)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
   }
 
   // Barber operations
@@ -579,13 +645,66 @@ export class DatabaseService {
   }
 
   static async isShopOpen(checkDate?: Date): Promise<boolean> {
-    const { data, error } = await supabase
-      .rpc('is_shop_open', { 
-        check_datetime: checkDate?.toISOString() || new Date().toISOString() 
-      });
+    const checkDateTime = checkDate?.toISOString() || new Date().toISOString();
+    console.log('Debug isShopOpen: checking datetime', checkDateTime);
     
-    if (error) throw error;
-    return data || false;
+    try {
+      const { data, error } = await supabase
+        .rpc('is_shop_open', { 
+          check_datetime: checkDateTime
+        });
+      
+      if (error) {
+        console.log('Debug isShopOpen: RPC error', error);
+        // Fallback to basic time check if RPC function doesn't exist
+        return await this.isShopOpenFallback(checkDate);
+      }
+      
+      console.log('Debug isShopOpen: RPC result', data);
+      return data || false;
+    } catch (err) {
+      console.log('Debug isShopOpen: Exception', err);
+      return await this.isShopOpenFallback(checkDate);
+    }
+  }
+
+  // Fallback method if RPC function doesn't exist
+  static async isShopOpenFallback(checkDate?: Date): Promise<boolean> {
+    const config = await this.getCompanyConfig();
+    if (!config) {
+      console.log('Debug fallback: No company config found');
+      return false;
+    }
+    
+    const targetDate = checkDate || new Date();
+    const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WorkingHours;
+    const daySchedule = config.working_hours[dayName];
+    
+    console.log('Debug fallback: checking day schedule for', dayName, 'on date:', targetDate.toISOString());
+    console.log('Debug fallback: day schedule found:', JSON.stringify(daySchedule, null, 2));
+    console.log('Debug fallback: all working hours:', JSON.stringify(config.working_hours, null, 2));
+    
+    if (!daySchedule || !daySchedule.isOpen) {
+      console.log('Debug fallback: day is closed or schedule missing');
+      return false;
+    }
+    
+    const targetTime = `${targetDate.getUTCHours().toString().padStart(2, '0')}:${targetDate.getUTCMinutes().toString().padStart(2, '0')}`; // HH:MM format in UTC
+    console.log('Debug fallback: target time (UTC)', targetTime);
+    console.log('Debug fallback: local time would be', targetDate.toTimeString().slice(0, 5));
+    console.log('Debug fallback: available shifts:', JSON.stringify(daySchedule.shifts, null, 2));
+    
+    // Check if time falls within any shift
+    for (const shift of daySchedule.shifts || []) {
+      console.log(`Debug fallback: checking if ${targetTime} is between ${shift.start} and ${shift.end}`);
+      if (targetTime >= shift.start && targetTime <= shift.end) {
+        console.log('Debug fallback: time is within shift', shift);
+        return true;
+      }
+    }
+    
+    console.log('Debug fallback: time is outside all shifts');
+    return false;
   }
 
   static async getWorkingHoursForDate(date: Date): Promise<DaySchedule | null> {
@@ -596,20 +715,126 @@ export class DatabaseService {
     return config.working_hours[dayName] || null;
   }
 
-  static async canBookAtTime(bookingDateTime: Date): Promise<boolean> {
+  static async canBookAtTime(bookingDateTime: Date, barberId?: string, totalDuration?: number): Promise<boolean> {
     const config = await this.getCompanyConfig();
-    if (!config) return false;
+    if (!config) {
+      console.log('Debug: No company config found');
+      return false;
+    }
 
     const now = new Date();
     const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     
+    console.log('Debug canBookAtTime:', {
+      bookingDateTime: bookingDateTime.toISOString(),
+      now: now.toISOString(),
+      hoursUntilBooking: hoursUntilBooking,
+      requiredAdvanceHours: config.booking_advance_hours,
+      barberId: barberId,
+      totalDuration: totalDuration
+    });
+    
     // Check if booking is within advance hours limit
-    if (hoursUntilBooking < config.booking_advance_hours) {
+    if (hoursUntilBooking < (config.booking_advance_hours || 1)) {
+      console.log('Debug: Booking too soon, advance hours check failed');
       return false;
     }
 
     // Check if shop is open at that time
-    return await this.isShopOpen(bookingDateTime);
+    const isOpen = await this.isShopOpen(bookingDateTime);
+    console.log('Debug: Shop open check result:', isOpen);
+    if (!isOpen) {
+      return false;
+    }
+
+    // Check for booking conflicts if barberId is provided
+    if (barberId) {
+      const hasConflict = await this.hasBookingConflict(bookingDateTime, barberId, totalDuration);
+      console.log('Debug: Booking conflict check result:', hasConflict);
+      if (hasConflict) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  static async hasBookingConflict(bookingDateTime: Date, barberId: string, totalDuration?: number): Promise<boolean> {
+    try {
+      // Get service duration to calculate time range
+      let serviceDuration = totalDuration || 60; // Use provided duration or default 1 hour
+
+      // Calculate booking end time
+      const bookingEndTime = new Date(bookingDateTime.getTime() + (serviceDuration * 60 * 1000));
+      
+      console.log('Debug conflict check:', {
+        bookingStart: bookingDateTime.toISOString(),
+        bookingEnd: bookingEndTime.toISOString(),
+        barberId: barberId,
+        serviceDuration: serviceDuration
+      });
+
+      // Get the barber's user_id for database query
+      const barber = await this.getBarberById(barberId);
+      if (!barber || !barber.user_id) {
+        console.log('Debug: Barber not found or no user_id');
+        return false; // If barber doesn't exist, no conflict
+      }
+
+      // Check for overlapping bookings for this barber
+      // Need to find bookings that could overlap with our time slot
+      // An existing booking conflicts if:
+      // 1. It starts before our booking ends, AND
+      // 2. It ends after our booking starts
+      // So we need to get all bookings for this barber on this day and check each one
+      
+      const dayStart = new Date(bookingDateTime);
+      dayStart.setUTCHours(0, 0, 0, 0);
+      const dayEnd = new Date(bookingDateTime);
+      dayEnd.setUTCHours(23, 59, 59, 999);
+      
+      const { data: conflictingBookings, error } = await supabase
+        .from('bookings')
+        .select('id, appointment_datetime, total_duration, barber_name, customer_name')
+        .eq('barber_id', barber.user_id)
+        .in('status', ['pending', 'confirmed']) // Only check active bookings
+        .gte('appointment_datetime', dayStart.toISOString())
+        .lte('appointment_datetime', dayEnd.toISOString());
+
+      if (error) {
+        console.error('Error checking booking conflicts:', error);
+        return false; // If we can't check, allow booking (could also return true to be safe)
+      }
+
+      console.log('Debug: Found potentially conflicting bookings:', conflictingBookings);
+
+      // Check each booking for actual time overlap
+      for (const booking of conflictingBookings || []) {
+        const existingStart = new Date(booking.appointment_datetime);
+        const existingEnd = new Date(existingStart.getTime() + (booking.total_duration * 60 * 1000));
+
+        // Check for overlap: new booking overlaps if it starts before existing ends AND ends after existing starts
+        const hasOverlap = (bookingDateTime < existingEnd) && (bookingEndTime > existingStart);
+        
+        if (hasOverlap) {
+          console.log('Debug: CONFLICT DETECTED with booking:', {
+            existingBooking: booking.id,
+            existingStart: existingStart.toISOString(),
+            existingEnd: existingEnd.toISOString(),
+            existingCustomer: booking.customer_name,
+            newBookingStart: bookingDateTime.toISOString(),
+            newBookingEnd: bookingEndTime.toISOString()
+          });
+          return true; // Conflict found
+        }
+      }
+
+      console.log('Debug: No conflicts found');
+      return false; // No conflicts
+    } catch (error) {
+      console.error('Error in hasBookingConflict:', error);
+      return false; // If error, allow booking (could also return true to be conservative)
+    }
   }
 
   static async updateWorkingHours(workingHours: WorkingHours): Promise<CompanyConfig> {
@@ -648,5 +873,299 @@ export class DatabaseService {
       updates.maintenance_message = message;
     }
     return this.updateCompanyConfig(updates);
+  }
+
+  // Booking operations
+  static async createBooking(bookingData: {
+    customer_id: string;
+    service_ids: string[]; // Changed from service_id to service_ids array
+    barber_id: string;
+    appointment_date: string;
+    appointment_time: string;
+    notes?: string;
+    special_requests?: string;
+  }): Promise<Booking> {
+    // Get all service details to calculate pricing and duration
+    const services: Service[] = [];
+    let totalPrice = 0;
+    let totalDuration = 0;
+    
+    for (const serviceId of bookingData.service_ids) {
+      const service = await this.getServiceById(serviceId);
+      if (!service) {
+        throw new Error(`Service with ID ${serviceId} not found`);
+      }
+      services.push(service);
+      totalPrice += service.price;
+      totalDuration += service.duration_minutes;
+    }
+
+    if (services.length === 0) {
+      throw new Error('At least one service must be selected');
+    }
+
+    // Get customer details
+    const customer = await this.getCustomerById(bookingData.customer_id);
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+
+    // Get barber details (required)
+    const barber = await this.getBarberById(bookingData.barber_id);
+    if (!barber) {
+      throw new Error('Barber not found');
+    }
+    if (!barber.user_id) {
+      throw new Error('Barber is not associated with a user account');
+    }
+    const barber_name = barber.user?.name || barber.user?.phone || 'Unknown Barber';
+
+    // Get company config for currency
+    const config = await this.getCompanyConfig();
+    const currency = config?.currency || 'BHD';
+
+    // Check availability with detailed error messaging (using total duration)
+    const appointmentDateTime = new Date(`${bookingData.appointment_date}T${bookingData.appointment_time}:00.000Z`);
+    const canBook = await this.canBookAtTime(appointmentDateTime, bookingData.barber_id, totalDuration);
+    if (!canBook) {
+      // Get more specific error information
+      const config = await this.getCompanyConfig();
+      const now = new Date();
+      const hoursUntilBooking = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const isAdvanceOk = hoursUntilBooking >= (config?.booking_advance_hours || 1);
+      const isShopOpen = await this.isShopOpen(appointmentDateTime);
+      const hasConflict = await this.hasBookingConflict(appointmentDateTime, bookingData.barber_id, totalDuration);
+      
+      let errorMessage = 'Selected time slot is not available';
+      if (!isAdvanceOk) {
+        errorMessage += ` - Must book at least ${config?.booking_advance_hours || 1} hour(s) in advance`;
+      } else if (!isShopOpen) {
+        const dayName = appointmentDateTime.toLocaleDateString('en-US', { weekday: 'long' });
+        errorMessage += ` - Shop is closed on ${dayName} at ${bookingData.appointment_time}. Check working hours.`;
+      } else if (hasConflict) {
+        errorMessage += ` - Barber ${barber_name} is already booked at ${bookingData.appointment_time} on ${bookingData.appointment_date}. Please choose a different time or barber.`;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    // Create the main booking record
+    const servicesNames = services.map(s => s.name).join(', ');
+    
+    const { data: booking, error } = await supabase
+      .from('bookings')
+      .insert([{
+        customer_id: customer.id,
+        customer_name: customer.name,
+        customer_phone: customer.phone,
+        customer_email: customer.email,
+        services_count: services.length,
+        total_duration: totalDuration,
+        services_summary: servicesNames,
+        barber_id: barber.user_id, // Use the user_id, not the barber_id
+        barber_name,
+        appointment_date: bookingData.appointment_date,
+        appointment_time: bookingData.appointment_time,
+        total_amount: totalPrice,
+        currency,
+        notes: bookingData.notes,
+        special_requests: bookingData.special_requests,
+        booking_source: 'web',
+        status: 'pending'
+      }])
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    // Create booking_services records for each service
+    const bookingServices = services.map((service, index) => ({
+      booking_id: booking.id,
+      service_id: service.id,
+      service_name: service.name,
+      service_price: service.price,
+      service_duration: service.duration_minutes,
+      service_order: index + 1
+    }));
+
+    const { error: servicesError } = await supabase
+      .from('booking_services')
+      .insert(bookingServices);
+
+    if (servicesError) {
+      // If service insertion fails, we should clean up the booking
+      await supabase.from('bookings').delete().eq('id', booking.id);
+      throw servicesError;
+    }
+
+    // Return the booking with services attached
+    return {
+      ...booking,
+      services: bookingServices.map(bs => ({
+        id: '', // Will be generated by database
+        booking_id: bs.booking_id,
+        service_id: bs.service_id,
+        service_name: bs.service_name,
+        service_price: bs.service_price,
+        service_duration: bs.service_duration,
+        service_order: bs.service_order,
+        created_at: new Date().toISOString()
+      }))
+    };
+  }
+
+  static async getBookingById(id: string): Promise<Booking | null> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        customer:customers(*),
+        service:services(*),
+        barber:users(*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async getBookingByConfirmationCode(code: string): Promise<Booking | null> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        customer:customers(*),
+        service:services(*),
+        barber:users(*)
+      `)
+      .eq('confirmation_code', code)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async getAllBookings(filters?: {
+    status?: BookingStatus;
+    date?: string;
+    customer_phone?: string;
+    service_id?: string;
+    barber_id?: string;
+    customer_id?: string;
+  }): Promise<Booking[]> {
+    let query = supabase
+      .from('bookings')
+      .select(`
+        *,
+        customer:customers(*),
+        barber:users(*)
+      `)
+      .order('appointment_datetime', { ascending: true });
+
+    if (filters?.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.date) {
+      query = query.eq('appointment_date', filters.date);
+    }
+    if (filters?.customer_phone) {
+      query = query.eq('customer_phone', filters.customer_phone);
+    }
+    if (filters?.service_id) {
+      // Skip service_id filter for now since column might not exist
+      console.warn('service_id filter skipped - requires database migration');
+    }
+    if (filters?.barber_id) {
+      query = query.eq('barber_id', filters.barber_id);
+    }
+    if (filters?.customer_id) {
+      query = query.eq('customer_id', filters.customer_id);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async updateBookingStatus(id: string, status: BookingStatus): Promise<Booking> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .update({ status })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateBooking(id: string, updates: Partial<{
+    appointment_date: string;
+    appointment_time: string;
+    notes: string;
+    special_requests: string;
+    status: BookingStatus;
+  }>): Promise<Booking> {
+    // If changing appointment time, check availability
+    if (updates.appointment_date || updates.appointment_time) {
+      const currentBooking = await this.getBookingById(id);
+      if (!currentBooking) throw new Error('Booking not found');
+
+      const newDate = updates.appointment_date || currentBooking.appointment_date;
+      const newTime = updates.appointment_time || currentBooking.appointment_time;
+      const appointmentDateTime = new Date(`${newDate}T${newTime}`);
+
+      // Check booking conflict excluding current booking
+      const { data: hasConflict } = await supabase
+        .rpc('check_booking_conflict', {
+          check_datetime: appointmentDateTime.toISOString(),
+          service_duration_minutes: currentBooking.total_duration,
+          booking_id_to_exclude: id
+        });
+
+      if (hasConflict) {
+        throw new Error('Selected time slot is not available');
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async cancelBooking(id: string, reason?: string): Promise<Booking> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .update({ 
+        status: 'cancelled',
+        notes: reason ? `Cancelled: ${reason}` : 'Cancelled'
+      })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async getAvailableTimeSlots(date: string, serviceDuration?: number): Promise<TimeSlot[]> {
+    const config = await this.getCompanyConfig();
+    const duration = serviceDuration || config?.default_service_duration || 30;
+
+    const { data, error } = await supabase
+      .rpc('get_available_time_slots', {
+        target_date: date,
+        service_duration_minutes: duration
+      });
+
+    if (error) throw error;
+    return data || [];
   }
 }

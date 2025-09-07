@@ -1,6 +1,6 @@
-# 💈 Customer Management API
+# 💈 Barber Shop Booking API
 
-A simple customer management API built with Next.js, featuring SMS OTP authentication and customer profile management.
+A comprehensive barber shop management API built with Next.js, featuring SMS OTP authentication, customer management, barber profiles, services, and a complete booking system.
 
 ## 🚀 Live Demo
 
@@ -23,30 +23,24 @@ src/
     └── api/
         ├── auth/           # SMS OTP & Token Authentication
         ├── customers/      # Customer profile management
+        ├── barbers/        # Barber management & profiles
+        ├── services/       # Service management
+        ├── bookings/       # Complete booking system
+        ├── company/        # Company configuration & working hours
         └── info/           # API information
 ```
 
 ## 🗄️ Database Schema
 
-The API uses a single `customers` table:
+The API uses multiple tables for complete barber shop management:
 
-```sql
-CREATE TABLE customers (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name varchar(100) NOT NULL,
-  phone varchar(20) UNIQUE NOT NULL,
-  email varchar(255) UNIQUE,
-  date_of_birth date,
-  address text,
-  notes text,
-  is_active boolean DEFAULT true,
-  total_visits integer DEFAULT 0,
-  total_spent numeric DEFAULT 0.00,
-  last_visit_date date,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now()
-);
-```
+### Core Tables:
+- `users` - Authentication and user roles
+- `customers` - Customer profiles and statistics  
+- `barbers` - Barber profiles and specialties
+- `services` - Service catalog with pricing
+- `bookings` - Appointment booking system
+- `company_config` - Business settings and working hours
 
 ## 🔐 Authentication Endpoints
 
