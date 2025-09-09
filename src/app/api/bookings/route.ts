@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate required fields (updated for multiple services)
-    const requiredFields = ['service_ids', 'barber_id', 'appointment_date', 'appointment_time'];
+    // Validate required fields
+    const requiredFields = ['services', 'appointment_date', 'appointment_time'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return corsResponse(
@@ -122,19 +122,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate service_ids is an array
-    if (!Array.isArray(body.service_ids) || body.service_ids.length === 0) {
+    // Validate services array
+    if (!Array.isArray(body.services) || body.services.length === 0) {
       return corsResponse(
-        { error: 'service_ids must be a non-empty array of service IDs' },
+        { error: 'services must be a non-empty array of service IDs' },
         400
       );
     }
 
-    // Validate each service_id is a string
-    for (const serviceId of body.service_ids) {
-      if (typeof serviceId !== 'string' || !serviceId.trim()) {
+    // Validate each service ID
+    for (let i = 0; i < body.services.length; i++) {
+      const serviceId = body.services[i];
+      if (!serviceId || typeof serviceId !== 'string' || !serviceId.trim()) {
         return corsResponse(
-          { error: 'Each service_id must be a valid string' },
+          { error: `services[${i}] must be a valid service ID string` },
           400
         );
       }
@@ -168,10 +169,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create booking using customer_id from auth token
+    // Handle optional barber_id - if not provided, we could auto-assign or require it
+    if (!body.barber_id) {
+      return corsResponse(
+        { error: 'barber_id is required. Please select a barber for your appointment.' },
+        400
+      );
+    }
+
+    // Create booking using customer_id from auth token and service IDs
     const booking = await DatabaseService.createBooking({
       customer_id: customer.id,
-      service_ids: body.service_ids,
+      service_ids: body.services, // Use services array directly as it's now just IDs
       barber_id: body.barber_id,
       appointment_date: body.appointment_date,
       appointment_time: body.appointment_time,

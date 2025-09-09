@@ -344,29 +344,28 @@ Soft delete service (sets is_active to false).
 #### Create Booking
 **`POST /api/bookings`**
 
-Create new appointment booking.
+Create new appointment booking. Customer information is automatically extracted from the authenticated user's token.
 
 **Request:**
 ```json
 {
-  "customer_name": "John Doe",
-  "customer_phone": "36304442",
-  "customer_email": "john@example.com",
   "appointment_date": "2025-09-15",
   "appointment_time": "14:30",
-  "services": [
-    {
-      "service_id": "uuid1",
-      "service_order": 1
-    },
-    {
-      "service_id": "uuid2", 
-      "service_order": 2
-    }
-  ],
+  "services": ["uuid1", "uuid2", "uuid3"],
   "barber_id": "uuid",
   "notes": "Please use scissors only"
 }
+```
+
+**Required Fields:**
+- `appointment_date`: Date in YYYY-MM-DD format
+- `appointment_time`: Time in HH:MM format (24-hour)
+- `services`: Array of service ID strings
+- `barber_id`: ID of the selected barber
+
+**Optional Fields:**
+- `notes`: Special notes for the appointment
+- `special_requests`: Any special requests from customer
 ```
 
 **Response:**
@@ -377,6 +376,8 @@ Create new appointment booking.
     "id": "uuid",
     "confirmation_code": "ABC123",
     "customer_name": "John Doe",
+    "customer_phone": "36304442",
+    "customer_email": "john@example.com",
     "appointment_datetime": "2025-09-15T14:30:00Z",
     "total_amount": 40.00,
     "total_duration": 75,
@@ -387,6 +388,8 @@ Create new appointment booking.
 ```
 
 **Role Required:** Customer, Barber, Admin
+
+**Note:** Customer information (name, phone, email) is automatically retrieved from the authenticated user's profile. No need to include customer details in the request body.
 
 ---
 
@@ -832,13 +835,21 @@ class BarberAPI {
   }
 
   async createBooking(bookingData) {
+    // Customer info is automatically extracted from token
+    // Only need appointment details and services
     const response = await fetch(`${API_BASE}/bookings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.token}`
       },
-      body: JSON.stringify(bookingData)
+      body: JSON.stringify({
+        appointment_date: bookingData.date,
+        appointment_time: bookingData.time,
+        services: bookingData.services, // Array of service ID strings
+        barber_id: bookingData.barber_id,
+        notes: bookingData.notes
+      })
     });
     return response.json();
   }
