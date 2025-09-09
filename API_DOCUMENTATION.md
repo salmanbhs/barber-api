@@ -516,6 +516,71 @@ Check available time slots for booking.
 
 ---
 
+#### Get Barber Occupied Slots
+**`GET /api/booking/barber-occupied-slots`**
+
+Get occupied time slots for a specific barber on a specific date to avoid booking conflicts.
+
+**Query Parameters:**
+- `date`: Date to check (YYYY-MM-DD) - Required
+- `barber_id`: Barber's user ID - Required
+
+**Example:** `/api/booking/barber-occupied-slots?date=2025-09-15&barber_id=uuid`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "date": "2025-09-15",
+    "barber_id": "uuid",
+    "barber_name": "Mike Johnson",
+    "occupied_slots": [
+      {
+        "booking_id": "uuid",
+        "confirmation_code": "ABC123",
+        "start_time": "10:00",
+        "end_time": "11:30",
+        "start_datetime": "2025-09-15T10:00:00Z",
+        "end_datetime": "2025-09-15T11:30:00Z",
+        "duration_minutes": 90,
+        "status": "confirmed",
+        "services": "Haircut, Beard Trim",
+        "customer_name": "John Doe",
+        "cannot_book_before": "10:00",
+        "cannot_book_after": "11:30"
+      }
+    ],
+    "total_occupied": 1,
+    "shop_info": {
+      "is_open": true,
+      "working_hours": {
+        "isOpen": true,
+        "shifts": [
+          {"start": "09:00", "end": "12:00"},
+          {"start": "16:00", "end": "20:00"}
+        ]
+      },
+      "advance_hours": 1,
+      "slot_interval": 15,
+      "min_booking_time": "2025-09-15T15:30:00Z",
+      "currency": "BHD"
+    },
+    "booking_constraints": {
+      "min_advance_hours": 1,
+      "earliest_booking_today": "15:30",
+      "can_book_today": true
+    }
+  }
+}
+```
+
+**Use Case:** This endpoint helps frontend applications show which time slots are already booked for a specific barber, allowing users to see available times and avoid booking conflicts. It respects the minimum advance booking hours from company configuration.
+
+**Role Required:** None (Public)
+
+---
+
 ### 👨‍💼 Barbers
 
 #### Get All Barbers
