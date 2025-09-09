@@ -1,33 +1,55 @@
 # 💈 Barber Shop Booking API
 
-A comprehensive barber shop management API built with Next.js, featuring SMS OTP authentication, customer management, barber profiles, services, and a complete booking system.
+A comprehensive barber shop management API built with Next.js, featuring OTP authentication, role-based access control, multi-service bookings, and complete barbershop management.
 
 ## 🚀 Live Demo
 
 **Production API:** [https://barber-api-wine.vercel.app](https://barber-api-wine.vercel.app)
 
+## 📚 Documentation
+
+**📖 Complete API Documentation:** [`API_DOCUMENTATION.md`](./API_DOCUMENTATION.md)
+
+This comprehensive guide includes:
+- All API endpoints with examples
+- Authentication & role-based access control
+- Request/response formats
+- Error handling
+- Mobile app integration examples
+
+**🗄️ Database Setup:** [`database/schema.sql`](./database/schema.sql)
+
 ## 🛠️ Tech Stack
 
 - **Framework:** Next.js 15.5.2 with App Router
 - **Database:** Supabase PostgreSQL 
-- **Authentication:** Supabase SMS OTP
+- **Authentication:** OTP-based (SMS) with JWT tokens
 - **Deployment:** Vercel
 - **Language:** TypeScript
-- **CORS:** Enabled for localhost:8081 frontend integration
+- **CORS:** Enabled for cross-origin requests
 
-## 📁 Project Structure
+## ⭐ Key Features
+
+- 🔐 **OTP Authentication** - No passwords, just phone + OTP
+- 👥 **Role-Based Access** - Admin, Barber, Customer roles
+- 📅 **Multi-Service Bookings** - Book multiple services in one appointment
+- ⏰ **Real-time Availability** - Smart scheduling with business hours
+- 🏢 **Company Management** - Configurable working hours, holidays, themes
+- 📱 **Mobile Ready** - Designed for mobile app integration
+- 🔄 **Auto-calculations** - Automatic booking totals, duration, confirmations
+
+## 📁 API Structure
 
 ```
-src/
-└── app/
-    └── api/
-        ├── auth/           # SMS OTP & Token Authentication
-        ├── customers/      # Customer profile management
-        ├── barbers/        # Barber management & profiles
-        ├── services/       # Service management
-        ├── bookings/       # Complete booking system
-        ├── company/        # Company configuration & working hours
-        └── info/           # API information
+/api/
+├── auth/              # OTP Authentication System
+├── admin/             # Admin user management  
+├── barbers/           # Barber profiles & schedules
+├── bookings/          # Appointment booking system
+├── customers/         # Customer management
+├── services/          # Service catalog management
+├── company/           # Business configuration
+└── booking/           # Availability & booking options
 ```
 
 ## 🗄️ Database Schema
