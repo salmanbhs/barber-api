@@ -523,9 +523,11 @@ Get occupied time slots for a specific barber on a specific date to avoid bookin
 
 **Query Parameters:**
 - `date`: Date to check (YYYY-MM-DD) - Required
-- `barber_id`: Barber's user ID - Required
+- `barber_id`: Barber's user ID (not barber table ID) - Required
 
 **Example:** `/api/booking/barber-occupied-slots?date=2025-09-15&barber_id=uuid`
+
+**Important:** The `barber_id` parameter should be the **user ID** of the barber (from the users table), not the ID from the barbers table. This is the same ID used when creating bookings.
 
 **Response:**
 ```json

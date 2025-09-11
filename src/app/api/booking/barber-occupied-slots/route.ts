@@ -37,13 +37,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate if barber exists
-    const barber = await DatabaseService.getBarberById(barberId);
+    // Validate if barber exists (barber_id is actually the user_id in our system)
+    const barber = await DatabaseService.getBarberByUserId(barberId);
     if (!barber) {
-      return corsResponse(
-        { error: 'Barber not found' },
-        404
-      );
+      // Try to get user directly if it's not a barber but a valid user
+      const user = await DatabaseService.getUserById(barberId);
+      if (!user || user.role !== 'barber') {
+        return corsResponse(
+          { error: 'Barber not found. Please provide a valid barber user ID.' },
+          404
+        );
+      }
     }
 
     // Get company config for advance booking settings
@@ -61,12 +65,13 @@ export async function GET(request: NextRequest) {
 
     // Check if the requested date is in the past
     if (endOfDay < now) {
+      const barberName = barber?.user?.name || (await DatabaseService.getUserById(barberId))?.name || 'Unknown';
       return corsResponse({
         success: true,
         data: {
           date,
           barber_id: barberId,
-          barber_name: barber.user?.name || 'Unknown',
+          barber_name: barberName,
           occupied_slots: [],
           advance_hours: advanceHours,
           slot_interval: slotInterval,
@@ -128,15 +133,18 @@ export async function GET(request: NextRequest) {
     
     // Get working hours for this date
     const workingHours = config?.working_hours;
-    const dayName = startOfDay.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    const dayConfig = workingHours && typeof workingHours === 'object' ? (workingHours as any)[dayName] : null;
+    const dayName = startOfDay.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof typeof workingHours;
+    const dayConfig = workingHours?.[dayName] || null;
+
+    // Get barber name for response
+    const barberName = barber?.user?.name || (await DatabaseService.getUserById(barberId))?.name || 'Unknown';
 
     return corsResponse({
       success: true,
       data: {
         date,
         barber_id: barberId,
-        barber_name: barber.user?.name || 'Unknown',
+        barber_name: barberName,
         occupied_slots: occupiedSlots,
         total_occupied: occupiedSlots.length,
         shop_info: {
